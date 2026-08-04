@@ -21,11 +21,44 @@ and it plays the cells as an animation.
 the circle and cools as it goes. The sheet is `docs/example-sheet.png`, which
 ships with the repo; rendered by `fbtest`, the offline harness.</sub>
 
-**Download:** [v0.1.0](https://github.com/stoatworks-labs/flipbook/releases/tag/v0.1.0)
-— macOS universal `.dmg`, a Windows installer, and zips of both plus the OpenFX
-bundle. The macOS build is **not notarised**; see [docs/UNSIGNED.md](docs/UNSIGNED.md).
+**Try it in your browser, with your own sprite sheet:**
+[flipbook.stoatworks-labs.com](https://flipbook.stoatworks-labs.com) — the
+plugin's own playback and placement in WebGL2. Nothing is uploaded.
+
+**Video:** [What it does, in 50 seconds](https://www.youtube.com/watch?v=k6OB4enGnMo)
 
 <!-- downloads:start -->
+
+## Download
+
+**[v0.1.0](https://github.com/stoatworks-labs/flipbook/releases/tag/v0.1.0)** — prebuilt for macOS and Windows. Pick your platform:
+
+<details>
+<summary><b>macOS</b> — Universal (Apple Silicon + Intel)</summary>
+
+| Build | Download | Size |
+| --- | --- | --- |
+| Universal (Apple Silicon + Intel) · .dmg disk image | [`flipbook-0.1.0-macos-universal.dmg`](https://github.com/stoatworks-labs/flipbook/releases/download/v0.1.0/flipbook-0.1.0-macos-universal.dmg) | 1.0 MB |
+| Universal (Apple Silicon + Intel) · .zip archive | [`flipbook-macos-universal.zip`](https://github.com/stoatworks-labs/flipbook/releases/latest/download/flipbook-macos-universal.zip) | 603 KB |
+| Universal (Apple Silicon + Intel) · .zip archive (OpenFX — Resolve, Vegas, Nuke) | [`flipbook-ofx-macos-universal.zip`](https://github.com/stoatworks-labs/flipbook/releases/latest/download/flipbook-ofx-macos-universal.zip) | 355 KB |
+
+</details>
+
+<details>
+<summary><b>Windows</b> — x64</summary>
+
+| Build | Download | Size |
+| --- | --- | --- |
+| x64 · .exe installer | [`flipbook-0.1.0-windows-x86_64-setup.exe`](https://github.com/stoatworks-labs/flipbook/releases/download/v0.1.0/flipbook-0.1.0-windows-x86_64-setup.exe) | 311 KB |
+| x64 · .zip archive | [`flipbook-windows-x86_64.zip`](https://github.com/stoatworks-labs/flipbook/releases/latest/download/flipbook-windows-x86_64.zip) | 356 KB |
+| x64 · .zip archive (OpenFX — Resolve, Vegas, Nuke) | [`flipbook-ofx-windows-x86_64.zip`](https://github.com/stoatworks-labs/flipbook/releases/latest/download/flipbook-ofx-windows-x86_64.zip) | 112 KB |
+
+</details>
+
+All builds, checksums and release notes: [github.com/stoatworks-labs/flipbook/releases](https://github.com/stoatworks-labs/flipbook/releases).
+
+The Windows builds are unsigned, so SmartScreen warns once.
+
 <!-- downloads:end -->
 
 ## What it plays
@@ -40,8 +73,9 @@ Anything laid out on a uniform grid, which is most of what exists:
   run are two parameter sets on the same sheet.
 - **Pixel art**, kept as pixel art. Set Sampling to Pixel and a 32 px sprite
   scales to a metre of LED wall with its edges intact.
-- **Pages of whole frames** — rendered backdrops, geometric tiles. Fit: Stretch
-  maps one cell onto the raster exactly.
+- **Pages of whole frames** — rendered backdrops, geometric tiles. Fit: Fill
+  covers the raster preserving the cell's aspect; Stretch maps one cell onto it
+  exactly, which is right when the cells are already the output's shape.
 - **Animated GIFs.** The file already knows its own frame count, so it brings its
   own grid and Columns and Rows are ignored.
 
