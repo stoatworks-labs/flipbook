@@ -219,6 +219,10 @@ does nothing. If that happens, the log says which file, and why:
 It also records when the grid does not divide the sheet exactly, which is the
 usual reason a sprite plays with a sliver of its neighbour down one edge.
 
+<!-- attributions:start -->
+This project is built on other people's work — see [ATTRIBUTIONS.md](ATTRIBUTIONS.md).
+<!-- attributions:end -->
+
 ## Licence
 
 MIT — see [LICENSE](LICENSE).
