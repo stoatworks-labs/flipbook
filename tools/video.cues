@@ -1,0 +1,72 @@
+# The project video, part one of two: a sprite sheet.
+#
+# Every frame is the real plugin rendering through the real FFGL sequence --
+# this is the generator being *operated*, not a mock-up. Render with:
+#
+#   ./build/fbtest --sequence /tmp/fb-a --script tools/video.cues \
+#                  --file docs/example-sheet.png --columns 5 --rows 4 \
+#                  --size 1920x1080 --seconds 24 --fps 30
+#
+# Part two is tools/video-tiles.cues against docs/example-tiles.png, and the
+# two are cut together by the backend's render.py. Two sheets and not one
+# because the plugin's two cases pull in opposite directions -- a soft sprite on
+# transparent that wants Fit: Native and the Alpha key, and a page of hard
+# full-frame graphics that wants Fit: Stretch and no key at all. Either alone
+# would be an honest demonstration of half the plugin.
+#
+# Syntax: `T Name=V` sets at a time, `T1..T2 Name=V1..V2` ramps between two
+# (eased, because a parameter that starts and stops abruptly reads as a cut).
+#
+# Continuous values are the 0..1 the host sees, not the physical quantity --
+# see Controls.h for why there is no other kind. Counts and dropdowns hold
+# their real value.
+#
+# The order of this part is the order of the argument: first that a page of
+# stills is an animation at all, then that you can cut a run out of it, then
+# what a field of copies does, and the stagger last, because that is the idea.
+
+# ------------------------------------------------- 0s: a page of stills, played
+# One sprite, its own proportions, on black. Nothing clever: this is the whole
+# proposition, and if it does not read in the first two seconds nothing later
+# will rescue it.
+0.0   Background Opacity=1.0
+0.0   Fit=0
+0.0   Scale=0.62
+0.0   Position X=0.5
+0.0   Position Y=0.5
+0.0   Rate=0.62
+0.0   Mode=0
+0.0   Copies=1
+0.0   Key=0
+0.0   Frame Count=0
+
+# ------------------------------------------------------ 4s: cut out a run
+# Frame Count from the whole sheet down to the first eight cells, so the loop
+# tightens onto the ignition and never reaches the embers; then Start Frame
+# walks that eight-frame window down the sheet, which is the same gesture that
+# picks "run" out of a sheet whose rows are idle, walk and run.
+4.0..7.0    Frame Count=0.0..8.0
+8.0..9.5    Start Frame=0.0..6.0
+10.5..12.0  Start Frame=6.0..0.0
+10.5..12.0  Frame Count=8.0..0.0
+
+# ----------------------------------------------------------- 12s: rate, mode
+# Slower, then ping-pong -- the burst runs backwards through its own cooling,
+# which is a thing the sheet cannot do on its own.
+12.0..13.5  Rate=0.62..0.44
+14.0        Mode=1
+16.5..18.0  Rate=0.44..0.70
+
+# --------------------------------------------------------------- 18s: copies
+# One to nine. The sprite shrinks as the field grows, so the frame stays about
+# as full as it was -- a count that quadruples the ink reads as a mistake.
+18.0        Mode=0
+18.0..20.0  Copies=1.0..9.0
+18.0..20.0  Scale=0.62..0.30
+18.0..20.0  Spread=0.6..0.52
+
+# -------------------------------------------------------------- 20s: STAGGER
+# The argument. Nine copies in step is wallpaper; nine copies a frame apart is
+# one animation travelling through them. Nothing else moves while it comes in,
+# because everything else in this video is a knob and this is the idea.
+20.0..24.0  Stagger=0.0..0.26

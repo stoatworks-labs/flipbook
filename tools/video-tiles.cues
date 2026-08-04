@@ -1,0 +1,72 @@
+# The project video, part two of two: a page of full-frame graphics.
+#
+#   ./build/fbtest --sequence /tmp/fb-b --script tools/video-tiles.cues \
+#                  --file docs/example-tiles.png --columns 4 --rows 4 \
+#                  --size 1920x1080 --seconds 20 --fps 30
+#
+# See tools/video.cues for part one, the syntax, and why there are two sheets.
+#
+# This part exists to say the thing part one cannot: a sheet does not have to be
+# a sprite. Sixteen hard-edged monochrome cells, played first as full-frame
+# graphics — which is Fit: Stretch and Key: None, a combination that would be
+# wrong for every frame of part one — and then broken into a field.
+
+# --------------------------------------------------- 0s: one cell, whole frame
+# Fill covers the raster preserving the cell's aspect and crops the overflow,
+# and None ignores the file's alpha, because a page like this has none worth
+# honouring. Straight in at full frame: after twenty-four seconds of sprites on
+# black, the cut to edge-to-edge op art is the point being made.
+#
+# Fill and not Stretch, though Stretch is the mode this sheet nominally
+# demonstrates. Stretch maps the square cell onto 16:9 exactly, which turns the
+# tile's circular window into an ellipse — correct, and it reads on screen as a
+# squashed circle rather than as a deliberate choice. Fill crops the disc off
+# the top and bottom instead, so what fills the frame is pure stripe with no
+# edge in it at all.
+0.0   Background Opacity=1.0
+0.0   Fit=1
+0.0   Key=3
+0.0   Copies=1
+0.0   Scale=0.57
+0.0   Position X=0.5
+0.0   Position Y=0.5
+0.0   Rate=0.58
+0.0   Mode=0
+0.0   Frame Count=0
+0.0   Stagger=0.0
+
+# Ping-pong at 4s: the bars narrow through the run and widen back out, so the
+# whole sheet breathes rather than snapping back to the first cell.
+4.0   Mode=1
+
+# ------------------------------------------------------------ 7s: into a field
+# Back to the cell's own proportions and out into a grid. Sampling stays Smooth
+# on purpose: these are the finest lines in either sheet, and Pixel here would
+# alias into a mess — which is a real answer about when to use which, not a
+# setting to hide.
+7.0         Fit=0
+7.0..9.5    Copies=1.0..12.0
+7.0..9.5    Scale=0.57..0.30
+7.0..9.5    Spread=0.6..0.58
+8.0..11.0   Stagger=0.0..0.20
+
+# ------------------------------------------------------------- 11s: the chase
+# On a ring, where the travel round the circle is unmistakable, then scattered.
+11.0        Arrange=1
+11.0..13.0  Copies=12.0..14.0
+11.0..13.0  Spread=0.58..0.46
+11.0..13.0  Scale=0.30..0.32
+
+14.5        Arrange=2
+14.5..17.0  Copies=14.0..24.0
+14.5..17.0  Spread=0.46..0.66
+14.5..17.0  Scale=0.32..0.24
+14.5..17.0  Stagger=0.20..0.34
+
+# ------------------------------------------------------------------ 17s: close
+# Tint into a cold blue over the last three seconds. The sheet is pure black and
+# white, so this is unambiguously the plugin and not the artwork — which is the
+# right last thing to say about a plugin that plays somebody else's artwork.
+17.0..20.0  Tint=1.0..0.35
+17.0..20.0  Tint_Green=1.0..0.70
+17.0..20.0  Spread=0.66..0.76

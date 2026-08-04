@@ -59,6 +59,7 @@
 #include <cmath>
 #include <cstdio>
 #include <cstring>
+#include <map>
 #include <string>
 #include <vector>
 
@@ -428,38 +429,22 @@ bool render( FlipbookPlugin& plugin, const Target& target, double seconds, GLuin
 	return plugin.ProcessOpenGL( &process ) == FF_SUCCESS;
 }
 
-struct ParamName
+/// Every parameter's host-facing name, read out of the plugin itself.
+///
+/// Built at runtime rather than kept as a table beside Controls.h, and that is
+/// not tidiness: a hand-written table is a second place for a name to live, and
+/// the failure it produces is a `--set` or a video cue that silently addresses
+/// nothing while everything else about the run looks correct.
+std::map< std::string, unsigned int > parameterIndex( FlipbookPlugin& plugin )
 {
-	unsigned int id;
-	const char* name;
-};
-
-// Only what the tests and --set need to reach by name. Kept beside Controls.h
-// by hand rather than generated, because the sweep reads its names out of the
-// plugin itself and this list only has to agree with the enum.
-const ParamName kNames[] = {
-	{ PT_SHEET_SOURCE, "Sheet From" }, { PT_COLUMNS, "Columns" }, { PT_ROWS, "Rows" },
-	{ PT_START, "Start Frame" }, { PT_LENGTH, "Frame Count" }, { PT_SAMPLING, "Sampling" },
-	{ PT_SYNC, "Sync" }, { PT_RATE, "Rate" }, { PT_MODE, "Mode" }, { PT_PHASE, "Phase" },
-	{ PT_FIT, "Fit" }, { PT_POS_X, "Position X" }, { PT_POS_Y, "Position Y" },
-	{ PT_SCALE, "Scale" }, { PT_ROTATION, "Rotation" }, { PT_FLIP_H, "Flip H" }, { PT_FLIP_V, "Flip V" },
-	{ PT_COPIES, "Copies" }, { PT_ARRANGE, "Arrange" }, { PT_SPREAD, "Spread" },
-	{ PT_STAGGER, "Stagger" }, { PT_SEED, "Seed" },
-	{ PT_KEY, "Key" }, { PT_KEY_R, "Key Colour" }, { PT_KEY_G, "Key Colour_Green" },
-	{ PT_KEY_B, "Key Colour_Blue" }, { PT_KEY_TOLERANCE, "Tolerance" }, { PT_KEY_SOFTNESS, "Softness" },
-	{ PT_TINT_R, "Tint" }, { PT_TINT_G, "Tint_Green" }, { PT_TINT_B, "Tint_Blue" },
-	{ PT_OPACITY, "Opacity" },
-	{ PT_BACK_R, "Background" }, { PT_BACK_G, "Background_Green" }, { PT_BACK_B, "Background_Blue" },
-	{ PT_BACK_OPACITY, "Background Opacity" },
-	{ PT_MIX, "Mix" }, { PT_PRESET, "Preset" },
-};
-
-int idForName( const std::string& name )
-{
-	for( const ParamName& entry : kNames )
-		if( name == entry.name )
-			return static_cast< int >( entry.id );
-	return -1;
+	std::map< std::string, unsigned int > byName;
+	for( unsigned int id = 0; id < PT_COUNT; ++id )
+	{
+		const char* name = plugin.GetParamName( id );
+		if( name != nullptr && name[ 0 ] != '\0' )
+			byName[ name ] = id;
+	}
+	return byName;
 }
 
 /// Point the plugin at a sheet and make it reload before the next draw.
@@ -970,6 +955,236 @@ int checkKey( const std::string& sheetPath )
 }
 
 //---------------------------------------------------------------------------
+// --sequence
+//---------------------------------------------------------------------------
+//
+// A cue sheet, so the project video is the real plugin being *operated* rather
+// than a mock-up or a screen recording:
+//
+//     12.0        Copies=9             set at a time
+//     4.0..9.0    Stagger=0.0..0.3     ramp between two times
+//
+// Times are seconds on the video's own clock, which is also the host clock
+// handed to the plugin — so a cue at 12s is the frame you see at 12s.
+//
+// The playback position is deliberately NOT pinned. The plugin runs off the
+// host clock exactly as it does in Resolume, which is the only way the video
+// can honestly show Rate, Mode and Sync doing anything.
+//
+struct Cue
+{
+	double from = 0.0;
+	double to   = 0.0;
+	std::string name;
+	float first  = 0.0f;
+	float second = 0.0f;
+	bool ramp    = false;
+};
+
+bool parseCues( const std::string& path, std::vector< Cue >& cues )
+{
+	std::FILE* file = std::fopen( path.c_str(), "rb" );
+	if( file == nullptr )
+	{
+		std::fprintf( stderr, "cannot open cue sheet %s\n", path.c_str() );
+		return false;
+	}
+
+	char line[ 1024 ];
+	int number = 0;
+	while( std::fgets( line, sizeof( line ), file ) != nullptr )
+	{
+		++number;
+		std::string text = line;
+
+		const size_t hash = text.find( '#' );
+		if( hash != std::string::npos )
+			text = text.substr( 0, hash );
+
+		const size_t firstReal = text.find_first_not_of( " \t\r\n" );
+		if( firstReal == std::string::npos )
+			continue;
+		text = text.substr( firstReal );
+
+		const size_t split = text.find_first_of( " \t" );
+		if( split == std::string::npos )
+			continue;
+
+		const std::string when = text.substr( 0, split );
+		std::string assignment = text.substr( split );
+
+		const size_t assignStart = assignment.find_first_not_of( " \t" );
+		if( assignStart == std::string::npos )
+			continue;
+		assignment = assignment.substr( assignStart );
+		while( !assignment.empty() && std::strchr( " \t\r\n", assignment.back() ) != nullptr )
+			assignment.pop_back();
+
+		Cue cue;
+		const size_t timeRange = when.find( ".." );
+		if( timeRange != std::string::npos )
+		{
+			cue.from = std::strtod( when.substr( 0, timeRange ).c_str(), nullptr );
+			cue.to   = std::strtod( when.substr( timeRange + 2 ).c_str(), nullptr );
+			cue.ramp = true;
+		}
+		else
+		{
+			cue.from = cue.to = std::strtod( when.c_str(), nullptr );
+		}
+
+		const size_t equals = assignment.find( '=' );
+		if( equals == std::string::npos )
+		{
+			std::fprintf( stderr, "%s:%d: expected Name=value\n", path.c_str(), number );
+			std::fclose( file );
+			return false;
+		}
+
+		cue.name                = assignment.substr( 0, equals );
+		const std::string value = assignment.substr( equals + 1 );
+
+		const size_t valueRange = value.find( ".." );
+		if( cue.ramp && valueRange != std::string::npos )
+		{
+			cue.first  = std::strtof( value.substr( 0, valueRange ).c_str(), nullptr );
+			cue.second = std::strtof( value.substr( valueRange + 2 ).c_str(), nullptr );
+		}
+		else
+		{
+			cue.first = cue.second = std::strtof( value.c_str(), nullptr );
+			cue.ramp  = false;
+		}
+
+		cues.push_back( cue );
+	}
+
+	std::fclose( file );
+	return true;
+}
+
+int renderSequence( const std::string& directory, const std::string& cuePath,
+                    const std::string& sheetPath, int columns, int rows,
+                    int width, int height, double seconds, double fps, bool effect )
+{
+	std::vector< Cue > cues;
+	if( !cuePath.empty() && !parseCues( cuePath, cues ) )
+		return 1;
+
+	FlipbookPlugin plugin( effect );
+	useSheet( plugin, sheetPath, columns, rows );
+
+	// Every cue is checked against the real parameter list before a single frame
+	// is rendered. A typo in a name would otherwise be a cue that silently never
+	// fires, and the only symptom would be a video that is subtly less
+	// interesting than the sheet says it is — after forty seconds of rendering.
+	const std::map< std::string, unsigned int > byName = parameterIndex( plugin );
+	for( const Cue& cue : cues )
+	{
+		if( byName.find( cue.name ) == byName.end() )
+		{
+			std::fprintf( stderr, "cue names '%s', which is not a parameter\n", cue.name.c_str() );
+			return 1;
+		}
+	}
+
+	Target target = makeTarget( width, height );
+
+	GLuint clip = 0;
+	if( effect )
+	{
+		std::vector< unsigned char > image( static_cast< size_t >( width ) * height * 4 );
+		for( int y = 0; y < height; ++y )
+			for( int x = 0; x < width; ++x )
+			{
+				unsigned char* p = image.data() + ( static_cast< size_t >( y ) * width + x ) * 4;
+				p[ 0 ] = static_cast< unsigned char >( 255 * x / std::max( 1, width - 1 ) );
+				p[ 1 ] = 40;
+				p[ 2 ] = static_cast< unsigned char >( 255 * y / std::max( 1, height - 1 ) );
+				p[ 3 ] = 255;
+			}
+		glGenTextures( 1, &clip );
+		glBindTexture( GL_TEXTURE_2D, clip );
+		glTexImage2D( GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, image.data() );
+		glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR );
+		glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR );
+		glBindTexture( GL_TEXTURE_2D, 0 );
+	}
+
+	const int frames = static_cast< int >( seconds * fps + 0.5 );
+	int lastColumns  = columns;
+	int lastRows     = rows;
+
+	for( int frame = 0; frame < frames; ++frame )
+	{
+		const double now = static_cast< double >( frame ) / fps;
+
+		// Applied in file order every frame rather than tracked as state, so a
+		// later cue on the same parameter simply wins — which is what reading
+		// the sheet top to bottom would lead you to expect.
+		for( const Cue& cue : cues )
+		{
+			if( now < cue.from )
+				continue;
+
+			float value = cue.second;
+			if( cue.ramp && now < cue.to && cue.to > cue.from )
+			{
+				const double t = ( now - cue.from ) / ( cue.to - cue.from );
+				// Smoothstep rather than linear. A parameter that starts and
+				// stops abruptly reads as a jump cut even when the value in
+				// between is right.
+				const double eased = t * t * ( 3.0 - 2.0 * t );
+				value = static_cast< float >( cue.first + ( cue.second - cue.first ) * eased );
+			}
+
+			plugin.SetFloatParameter( byName.at( cue.name ), value );
+		}
+
+		// The grid is the one thing a cue can change that needs the sheet
+		// re-cut, and SetFloatParameter alone will not do it from here because
+		// the harness reloads on demand rather than per frame.
+		const int nowColumns = static_cast< int >( std::lround( plugin.GetFloatParameter( PT_COLUMNS ) ) );
+		const int nowRows    = static_cast< int >( std::lround( plugin.GetFloatParameter( PT_ROWS ) ) );
+		if( nowColumns != lastColumns || nowRows != lastRows )
+		{
+			plugin.Invalidate();
+			lastColumns = nowColumns;
+			lastRows    = nowRows;
+		}
+
+		if( !render( plugin, target, now, clip ) )
+		{
+			std::fprintf( stderr, "render failed at frame %d\n", frame );
+			releaseTarget( target );
+			return 1;
+		}
+
+		char path[ 1024 ];
+		std::snprintf( path, sizeof( path ), "%s/frame%05d.png", directory.c_str(), frame );
+
+		const std::vector< unsigned char > image = flipRows( readBytes( target ), width, height );
+		if( !writePng( path, width, height, image ) )
+		{
+			std::fprintf( stderr, "could not write %s\n", path );
+			releaseTarget( target );
+			return 1;
+		}
+
+		if( ( frame + 1 ) % 60 == 0 )
+			std::printf( "  %d / %d frames\n", frame + 1, frames );
+	}
+
+	if( clip != 0 )
+		glDeleteTextures( 1, &clip );
+	releaseTarget( target );
+
+	std::printf( "wrote %d frames to %s (%dx%d at %g fps)\n", frames, directory.c_str(),
+	             width, height, fps );
+	return 0;
+}
+
+//---------------------------------------------------------------------------
 // --list
 //---------------------------------------------------------------------------
 int listParameters()
@@ -1044,7 +1259,11 @@ void usage()
 		"  --time SECONDS      the clock for --out\n"
 		"  --size WxH          the raster for --out\n"
 		"  --effect            render the effect variant over a test clip\n"
-		"  --set \"Name=value\"  set any parameter by name\n" );
+		"  --set \"Name=value\"  set any parameter by name\n"
+		"\n"
+		"  --sequence DIR      render a PNG per frame for the project video\n"
+		"  --script FILE       the cue sheet driving it (tools/video.cues)\n"
+		"  --seconds N --fps N\n" );
 }
 } // namespace
 
@@ -1063,6 +1282,10 @@ int main( int argc, char** argv )
 	int height    = 720;
 	bool effect   = false;
 	bool detailed = false;
+	std::string sequenceDir;
+	std::string scriptPath;
+	double seconds = 40.0;
+	double fps     = 30.0;
 	bool doList   = false;
 	bool doFrames = false;
 	bool doCopies = false;
@@ -1078,6 +1301,10 @@ int main( int argc, char** argv )
 		if( arg == "--out" ) outPath = next();
 		else if( arg == "--make-sheet" ) makeSheetPath = next();
 		else if( arg == "--detail" ) detailed = true;
+		else if( arg == "--sequence" ) sequenceDir = next();
+		else if( arg == "--script" ) scriptPath = next();
+		else if( arg == "--seconds" ) seconds = std::atof( next().c_str() );
+		else if( arg == "--fps" ) fps = std::atof( next().c_str() );
 		else if( arg == "--sheet" ) describePath = next();
 		else if( arg == "--file" ) sheetPath = next();
 		else if( arg == "--columns" ) columns = std::atoi( next().c_str() );
@@ -1122,7 +1349,8 @@ int main( int argc, char** argv )
 	if( !describePath.empty() )
 		return describeSheet( describePath, columns, rows );
 
-	const bool anything = doList || doFrames || doCopies || doAspect || doSeam || doKey || !outPath.empty();
+	const bool anything = doList || doFrames || doCopies || doAspect || doSeam || doKey
+	                      || !outPath.empty() || !sequenceDir.empty();
 	if( !anything )
 	{
 		usage();
@@ -1156,6 +1384,15 @@ int main( int argc, char** argv )
 		rows    = kTestRows;
 	}
 
+	if( !sequenceDir.empty() )
+	{
+		const int result = renderSequence( sequenceDir, scriptPath, sheetPath, columns, rows,
+		                                   width, height, seconds, fps, effect );
+		CGLSetCurrentContext( nullptr );
+		CGLDestroyContext( context );
+		return result;
+	}
+
 	if( doList )
 		failures += listParameters();
 	if( doFrames )
@@ -1179,17 +1416,18 @@ int main( int argc, char** argv )
 		else
 			useSheet( plugin, testSheet.empty() ? std::string() : testSheet, columns, rows );
 
+		const std::map< std::string, unsigned int > byName = parameterIndex( plugin );
 		for( const auto& set : sets )
 		{
-			const int id = idForName( set.first );
-			if( id < 0 )
+			const auto found = byName.find( set.first );
+			if( found == byName.end() )
 			{
 				std::fprintf( stderr, "no parameter called '%s'\n", set.first.c_str() );
 				failures += 1;
 				continue;
 			}
-			plugin.SetFloatParameter( static_cast< unsigned int >( id ), set.second );
-			if( id == PT_COLUMNS || id == PT_ROWS )
+			plugin.SetFloatParameter( found->second, set.second );
+			if( found->second == PT_COLUMNS || found->second == PT_ROWS )
 				plugin.Invalidate();
 		}
 

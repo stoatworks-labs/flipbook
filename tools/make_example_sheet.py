@@ -19,6 +19,14 @@ cells, straight alpha — the case the Alpha key handles and most exported sheet
 actually are.
 
     tools/make_example_sheet.py [--out docs/example-sheet.png]
+    tools/make_example_sheet.py --tiles [--out docs/example-tiles.png]
+
+`--tiles` writes the *other* kind of sheet, and it is the other kind on purpose.
+The burst is a sprite: small, soft, on transparent, and what Fit: Native and the
+Alpha key are for. A page of hard-edged full-frame graphics is the case that
+wants Fit: Fill or Stretch and Key: None, and it is the one that reads at a glance —
+which is why the project video needs both and why neither on its own would be an
+honest demonstration.
 """
 
 import argparse
@@ -60,18 +68,92 @@ def shard_colour(t, heat):
     two shards cool at quite the same moment -- a burst whose pieces all change
     colour together reads as a palette swap rather than as combustion.
     """
-    cool = min(1.0, t * 1.35 + heat * 0.25)
+    cool = min(1.0, t * 1.05 + heat * 0.22)
     r = 1.0
     g = max(0.0, 0.95 - cool * 0.75)
     b = max(0.0, 0.75 - cool * 1.5)
     return r, g, b
 
 
+TILE_COLUMNS = 4
+TILE_ROWS = 4
+TILE_FRAMES = TILE_COLUMNS * TILE_ROWS
+TILE_CELL = 256
+
+
+def make_tiles(out):
+    """A 4x4 page of hard-edged monochrome tiles, one animation.
+
+    Each cell is the same field of diagonal bars sampled at a different phase,
+    with the bar width and the angle both walking through the run — so playing
+    the sheet is a rotating, breathing moire rather than sixteen unrelated
+    pictures. Opaque and pure black and white, because this is the sheet that
+    demonstrates the full-frame case, and a soft or partly transparent one would
+    demonstrate it badly.
+    """
+    width = TILE_COLUMNS * TILE_CELL
+    height = TILE_ROWS * TILE_CELL
+    rgba = bytearray(width * height * 4)
+
+    for frame in range(TILE_FRAMES):
+        t = frame / TILE_FRAMES
+        ox = (frame % TILE_COLUMNS) * TILE_CELL
+        oy = (frame // TILE_COLUMNS) * TILE_CELL
+
+        # A full turn across the run, so the loop closes: the last cell's angle
+        # is one bar-period short of the first, not back at it, which is what
+        # stops the loop point reading as a stutter.
+        angle = t * math.pi
+        ca, sa = math.cos(angle), math.sin(angle)
+        # Bold on purpose. An earlier version ran down to 0.04 of the cell —
+        # about fifty bars across — and the plugin's own demo showed exactly why
+        # that is a bad example sheet: the sheet is not mipmapped (deliberately,
+        # see AGENTS.md), so a cell drawn small enough aliases those bars into a
+        # flat grey disc. Three to ten bars read at every size the plugin will
+        # ever draw them at.
+        period = 0.42 + 0.22 * math.sin(t * 2.0 * math.pi)
+        duty = 0.46 + 0.14 * math.cos(t * 4.0 * math.pi)
+
+        for y in range(TILE_CELL):
+            py = (y / TILE_CELL) * 2.0 - 1.0
+            for x in range(TILE_CELL):
+                px = (x / TILE_CELL) * 2.0 - 1.0
+
+                projected = px * ca + py * sa
+                phase = (projected / period) % 1.0
+                ink = 1.0 if phase < duty else 0.0
+
+                # A hard circular window per cell, so the tiles read as objects
+                # rather than as one continuous field when they are drawn side
+                # by side as copies.
+                if px * px + py * py > 0.94:
+                    ink = 0.0
+
+                v = int(ink * 255)
+                offset = ((oy + y) * width + ox + x) * 4
+                rgba[offset + 0] = v
+                rgba[offset + 1] = v
+                rgba[offset + 2] = v
+                rgba[offset + 3] = 255
+
+    out.parent.mkdir(parents=True, exist_ok=True)
+    write_png(out, width, height, bytes(rgba))
+    print(f"wrote {out} ({width} x {height}, {TILE_COLUMNS} x {TILE_ROWS} cells of {TILE_CELL} px)")
+
+
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--out", type=pathlib.Path,
-                        default=pathlib.Path(__file__).resolve().parent.parent / "docs" / "example-sheet.png")
+    parser.add_argument("--tiles", action="store_true",
+                        help="write the monochrome full-frame tile sheet instead")
+    parser.add_argument("--out", type=pathlib.Path, default=None)
     args = parser.parse_args()
+
+    docs = pathlib.Path(__file__).resolve().parent.parent / "docs"
+    if args.tiles:
+        make_tiles(args.out or docs / "example-tiles.png")
+        return
+    if args.out is None:
+        args.out = docs / "example-sheet.png"
 
     width = COLUMNS * CELL
     height = ROWS * CELL
@@ -86,7 +168,16 @@ def main():
         # what an explosion does and what a linear expansion conspicuously does
         # not.
         travel = 1.0 - (1.0 - t) ** 2.2
-        fade = 1.0 if t < 0.45 else max(0.0, 1.0 - (t - 0.45) / 0.55)
+
+        # Held bright for most of the run, and never quite reaching zero.
+        #
+        # An earlier version faded from t = 0.45 down to nothing, which is what
+        # a real explosion does and made a bad *example sheet*: the back half of
+        # the page was dim red specks, so any Start Frame past the middle looked
+        # like the plugin had stopped working rather than like a later frame.
+        # An example sheet has to be legible at every cell, because every cell
+        # is somewhere an operator will land while learning the controls.
+        fade = 1.0 if t < 0.62 else max(0.12, 1.0 - (t - 0.62) / 0.48)
 
         for y in range(CELL):
             for x in range(CELL):
