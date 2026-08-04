@@ -117,6 +117,44 @@ for pair in "Flipbook:FB01:FB02" "Flipbook Over:FB02:FB01"; do
 done
 
 # ---------------------------------------------------------------------------
+# The OpenFX bundle's plist.
+#
+# This exists because it went wrong. cmake/InfoOFX.plist.in was copied from
+# another repo with that plugin's name hardcoded into CFBundleExecutable, and
+# NOTHING caught it: the bundle assembles, the binary is universal, the OFX
+# entry point exports, ofxprobe loads it and renders through it. It fails only
+# at release time, in codesign, with a message that names a "subcomponent" and
+# never mentions the plist.
+#
+# So the check is the release step itself, run here where it is cheap: does the
+# plist name the binary that is actually there, and does an ad-hoc sign of the
+# bundle succeed. On a copy of the bundle, so a verify run never leaves a
+# signature on the build tree that the release job did not put there.
+# ---------------------------------------------------------------------------
+if [ -d "$BUILD/Flipbook.ofx.bundle" ]; then
+	step "the OpenFX bundle signs"
+
+	plist="$BUILD/Flipbook.ofx.bundle/Contents/Info.plist"
+	named=$(/usr/libexec/PlistBuddy -c "Print :CFBundleExecutable" "$plist" 2>/dev/null)
+	if [ ! -f "$BUILD/Flipbook.ofx.bundle/Contents/MacOS/$named" ]; then
+		printf '\033[31mFAILED: Info.plist names "%s", which is not in Contents/MacOS\033[0m\n' "$named"
+		failures=$((failures + 1))
+	else
+		scratch="${TMPDIR:-/tmp}/flipbook-signcheck.ofx.bundle"
+		rm -rf "$scratch"
+		cp -R "$BUILD/Flipbook.ofx.bundle" "$scratch"
+		if codesign --force --sign - --timestamp=none "$scratch" >/dev/null 2>&1; then
+			printf 'ok   CFBundleExecutable is %s, and the bundle ad-hoc signs\n' "$named"
+		else
+			printf '\033[31mFAILED: the OpenFX bundle will not codesign\033[0m\n'
+			codesign --force --sign - --timestamp=none "$scratch" 2>&1 | sed 's/^/       /'
+			failures=$((failures + 1))
+		fi
+		rm -rf "$scratch"
+	fi
+fi
+
+# ---------------------------------------------------------------------------
 # Universal.
 #
 # CMake latches CMAKE_OSX_ARCHITECTURES when the first target is created, so

@@ -1,0 +1,11 @@
+{
+  "name": "flipbook",
+  "version-string": "0.1.0",
+  "description": "Dependencies for building the Flipbook FFGL plugins. GLEW is only needed on Windows; macOS uses the system OpenGL framework. Image decoding is stb_image, vendored under external/stb, so it is not a dependency here.",
+  "dependencies": [
+    {
+      "name": "glew",
+      "platform": "!osx"
+    }
+  ]
+}

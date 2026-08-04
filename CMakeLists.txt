@@ -209,6 +209,7 @@ if(BUILD_OFX)
         LIBRARY_OUTPUT_DIRECTORY "${OFX_BUNDLE_DIR}/Contents/MacOS"
     )
     if(APPLE)
+        set(OFX_BUNDLE_IDENTIFIER "com.stoatworks.flipbook.ofx")
         configure_file(cmake/InfoOFX.plist.in
             "${OFX_BUNDLE_DIR}/Contents/Info.plist" @ONLY)
     elseif(WIN32)
