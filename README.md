@@ -21,6 +21,13 @@ and it plays the cells as an animation.
 the circle and cools as it goes. The sheet is `docs/example-sheet.png`, which
 ships with the repo; rendered by `fbtest`, the offline harness.</sub>
 
+**Download:** [v0.1.0](https://github.com/stoatworks-labs/flipbook/releases/tag/v0.1.0)
+— macOS universal `.dmg`, a Windows installer, and zips of both plus the OpenFX
+bundle. The macOS build is **not notarised**; see [docs/UNSIGNED.md](docs/UNSIGNED.md).
+
+<!-- downloads:start -->
+<!-- downloads:end -->
+
 ## What it plays
 
 Anything laid out on a uniform grid, which is most of what exists:
