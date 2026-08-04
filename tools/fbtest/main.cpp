@@ -16,6 +16,7 @@
         --aspect            a square cell stays square off 1:1
         --seam              no cell bleeds into its neighbour
         --key               the four key modes, on known colours
+        --presets           every factory preset frames itself on the raster
 
     ## The synthetic sheet
 
@@ -48,6 +49,10 @@
 
     `--seam` is the half-texel inset, and it is the test this plugin most needs.
 
+    `--presets` checks the framing of every factory preset, which none of the
+    others touch: they all use their own parameter values, and the sweep only
+    asks whether the Preset dropdown changes the picture at all.
+
     None of them catches a dead uniform. See `tools/sweep.py`.
 */
 
@@ -67,6 +72,7 @@
 #include "Flipbook.h"
 #include "Placement.h"
 #include "Playback.h"
+#include "Presets.h"
 #include "Sheet.h"
 
 using namespace flipbook;
@@ -955,6 +961,75 @@ int checkKey( const std::string& sheetPath )
 }
 
 //---------------------------------------------------------------------------
+// --presets
+//---------------------------------------------------------------------------
+//
+// Every factory preset, applied through the real dropdown, with every copy's
+// centre checked against the raster.
+//
+// This exists because three of the seven presets shipped framed wrong and
+// nothing here noticed. Carousel was the worst: Spread runs 0..1.5, so its 1.0
+// was a ring of radius 0.75 with the top and bottom of the ring a fifth of the
+// frame outside it -- a preset that showed four of its twelve copies. `--copies`
+// could not catch it because that test uses its own parameter values, and
+// `sweep.py` could not because it only asks whether the Preset dropdown changes
+// the picture at all. It was found by clicking the presets in the web demo,
+// which is not a test.
+//
+// The assertion is on the copy's CENTRE, not its edges. A sprite hanging over
+// the edge of the frame is a legitimate look and a common one; a sprite whose
+// middle is off the raster is a framing mistake in every case.
+int checkPresets( const std::string& sheetPath )
+{
+	Target target = makeTarget( 1920, 1080 );
+	int failures  = 0;
+
+	for( int index = 1; index <= presets::kCount; ++index )
+	{
+		FlipbookPlugin plugin( false );
+		useSheet( plugin, sheetPath, kTestColumns, kTestRows );
+		plugin.SetFloatParameter( PT_PRESET, static_cast< float >( index ) );
+
+		// Through a real render, so the preset has actually been applied by the
+		// same path a host uses rather than read out of the table.
+		if( !render( plugin, target, 0.611 ) )
+		{
+			std::fprintf( stderr, "  %s: render failed\n", presets::kPresets[ index - 1 ].name );
+			++failures;
+			continue;
+		}
+
+		std::vector< Copy > copies;
+		SolveCopies( plugin.CurrentLayout( target.width, target.height ), copies );
+
+		int outside = 0;
+		for( const Copy& copy : copies )
+		{
+			if( copy.centreX < 0.0f || copy.centreX > 1.0f
+			    || copy.centreY < 0.0f || copy.centreY > 1.0f )
+				++outside;
+		}
+
+		if( outside > 0 )
+		{
+			std::fprintf( stderr, "  %-12s %d of %d copies are centred off the raster\n",
+			              presets::kPresets[ index - 1 ].name, outside,
+			              static_cast< int >( copies.size() ) );
+			++failures;
+		}
+		else
+		{
+			std::printf( "  %-12s %2d copies, all on the raster\n",
+			             presets::kPresets[ index - 1 ].name, static_cast< int >( copies.size() ) );
+		}
+	}
+
+	releaseTarget( target );
+	std::printf( failures == 0 ? "presets: ok\n" : "presets: %d FAILED\n", failures );
+	return failures;
+}
+
+//---------------------------------------------------------------------------
 // --sequence
 //---------------------------------------------------------------------------
 //
@@ -1252,6 +1327,7 @@ void usage()
 		"  --aspect            a square cell stays square off 1:1\n"
 		"  --seam              no cell bleeds into its neighbour\n"
 		"  --key               the four key modes on known colours\n"
+		"  --presets           every factory preset frames itself on the raster\n"
 		"  --all               every check above\n"
 		"\n"
 		"  --file PATH         the sheet to use (default: a temporary synthetic one)\n"
@@ -1291,7 +1367,8 @@ int main( int argc, char** argv )
 	bool doCopies = false;
 	bool doAspect = false;
 	bool doSeam   = false;
-	bool doKey    = false;
+	bool doKey     = false;
+	bool doPresets = false;
 
 	for( int i = 1; i < argc; ++i )
 	{
@@ -1317,7 +1394,8 @@ int main( int argc, char** argv )
 		else if( arg == "--aspect" ) doAspect = true;
 		else if( arg == "--seam" ) doSeam = true;
 		else if( arg == "--key" ) doKey = true;
-		else if( arg == "--all" ) doFrames = doCopies = doAspect = doSeam = doKey = true;
+		else if( arg == "--presets" ) doPresets = true;
+		else if( arg == "--all" ) doFrames = doCopies = doAspect = doSeam = doKey = doPresets = true;
 		else if( arg == "--size" )
 		{
 			const std::string value = next();
@@ -1349,7 +1427,7 @@ int main( int argc, char** argv )
 	if( !describePath.empty() )
 		return describeSheet( describePath, columns, rows );
 
-	const bool anything = doList || doFrames || doCopies || doAspect || doSeam || doKey
+	const bool anything = doList || doFrames || doCopies || doAspect || doSeam || doKey || doPresets
 	                      || !outPath.empty() || !sequenceDir.empty();
 	if( !anything )
 	{
@@ -1371,7 +1449,7 @@ int main( int argc, char** argv )
 	// through LoadSheet and stb_image exactly as a real sheet does, so a decode
 	// bug fails a test rather than being bypassed by the harness.
 	std::string testSheet = sheetPath;
-	if( testSheet.empty() && ( doFrames || doCopies || doAspect || doSeam || doKey ) )
+	if( testSheet.empty() && ( doFrames || doCopies || doAspect || doSeam || doKey || doPresets ) )
 	{
 		testSheet = "/tmp/fbtest-sheet.png";
 		if( makeSheet( testSheet, false ) != 0 )
@@ -1405,6 +1483,8 @@ int main( int argc, char** argv )
 		failures += checkSeam( testSheet );
 	if( doKey )
 		failures += checkKey( testSheet );
+	if( doPresets )
+		failures += checkPresets( testSheet );
 
 	if( !outPath.empty() )
 	{

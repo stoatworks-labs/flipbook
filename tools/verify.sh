@@ -11,6 +11,7 @@
 #   --aspect      does a square cell stay square, and the right size, off 1:1
 #   --seam        does any cell bleed into its neighbour under either filter
 #   --key         do the four key modes do four different things
+#   --presets     does every factory preset put its copies on the raster
 #   sweep.py      does every control actually reach the picture
 #   registration  does each bundle contain exactly its own plugin
 #   lipo          is the macOS build really universal
@@ -55,6 +56,9 @@ check "$BUILD/fbtest" --seam
 
 step "the four key modes"
 check "$BUILD/fbtest" --key
+
+step "every factory preset frames itself"
+check "$BUILD/fbtest" --presets
 
 step "no dead controls"
 check python3 tools/sweep.py

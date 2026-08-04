@@ -86,11 +86,19 @@ inline constexpr Preset kPresets[] = {
 	    /*Back*/ 0.0f, 0.0f, 0.0f, /*BackOp*/ 0.0f } },
 
 	// A sheet of whole frames rather than of sprites -- the page of geometric
-	// tiles, a set of rendered backdrops. One cell fills the raster exactly and
-	// the file's alpha is ignored, because a sheet like that has none worth
+	// tiles, a set of rendered backdrops. One cell covers the raster and the
+	// file's alpha is ignored, because a sheet like that has none worth
 	// honouring and half of them have black where they mean opaque.
+	//
+	// Fill and not Stretch, though Stretch is the mode this preset nominally
+	// exists for. On a sheet whose cells are already the output's aspect the two
+	// are identical, which is the common case; on a square-celled sheet Stretch
+	// distorts every frame and Fill crops it, and a preset should fail the
+	// gentler way. Stretch is one dropdown away for anyone who wants it. Found
+	// by clicking this preset in the web demo and watching a circle become an
+	// ellipse.
 	{ "Full Frame",
-	  { /*Rate*/ 0.52f, /*Mode*/ 0, /*Sampling*/ 0, /*Fit*/ 2, /*Scale*/ 0.5f, /*Rot*/ 0.5f,
+	  { /*Rate*/ 0.52f, /*Mode*/ 0, /*Sampling*/ 0, /*Fit*/ 1, /*Scale*/ 0.5f, /*Rot*/ 0.5f,
 	    /*Copies*/ 1, /*Arrange*/ 0, /*Spread*/ 0.6f, /*Stagger*/ 0.0f,
 	    /*Key*/ 3, /*KeyCol*/ 0.0f, 0.0f, 0.0f, /*Tol*/ 0.0f, /*Soft*/ 0.0f,
 	    /*Tint*/ 1.0f, 1.0f, 1.0f, /*Opacity*/ 1.0f,
@@ -107,19 +115,28 @@ inline constexpr Preset kPresets[] = {
 	    /*Back*/ 0.0f, 0.0f, 0.0f, /*BackOp*/ 0.0f } },
 
 	// A field of them, scattered and out of step: the sprite as texture rather
-	// than as subject.
+	// than as subject. Spread is well short of its top: at 0.85 a quarter of the
+	// copies land off the raster, which is legitimate as a hand-set look and
+	// wasteful as a preset.
 	{ "Swarm",
 	  { /*Rate*/ 0.70f, /*Mode*/ 0, /*Sampling*/ 0, /*Fit*/ 0, /*Scale*/ 0.24f, /*Rot*/ 0.5f,
-	    /*Copies*/ 24, /*Arrange*/ 2, /*Spread*/ 0.85f, /*Stagger*/ 0.28f,
+	    /*Copies*/ 24, /*Arrange*/ 2, /*Spread*/ 0.60f, /*Stagger*/ 0.28f,
 	    /*Key*/ 0, /*KeyCol*/ 0.0f, 0.0f, 0.0f, /*Tol*/ 0.0f, /*Soft*/ 0.0f,
 	    /*Tint*/ 1.0f, 1.0f, 1.0f, /*Opacity*/ 1.0f,
 	    /*Back*/ 0.0f, 0.0f, 0.0f, /*BackOp*/ 0.0f } },
 
 	// Twelve on a ring, each a frame behind the last, so the animation travels
 	// round the circle. The clearest demonstration of what Stagger is for.
+	//
+	// Spread is 0.44 and not the 1.0 it started as. Spread runs 0..1.5, so 1.0
+	// is a radius of 0.75 and put the top and bottom of the ring a fifth of the
+	// frame outside it -- a preset showing four of its twelve copies. Nothing in
+	// the test suite would have caught that: --copies uses its own values, and
+	// the sweep only asks whether the Preset dropdown changes the picture. It
+	// was found by clicking the preset in the web demo.
 	{ "Carousel",
 	  { /*Rate*/ 0.664f, /*Mode*/ 0, /*Sampling*/ 0, /*Fit*/ 0, /*Scale*/ 0.30f, /*Rot*/ 0.5f,
-	    /*Copies*/ 12, /*Arrange*/ 1, /*Spread*/ 1.0f, /*Stagger*/ 0.17f,
+	    /*Copies*/ 12, /*Arrange*/ 1, /*Spread*/ 0.44f, /*Stagger*/ 0.17f,
 	    /*Key*/ 0, /*KeyCol*/ 0.0f, 0.0f, 0.0f, /*Tol*/ 0.0f, /*Soft*/ 0.0f,
 	    /*Tint*/ 1.0f, 1.0f, 1.0f, /*Opacity*/ 1.0f,
 	    /*Back*/ 0.0f, 0.0f, 0.0f, /*BackOp*/ 0.0f } },
@@ -130,7 +147,7 @@ inline constexpr Preset kPresets[] = {
 	// is.
 	{ "Pixel Nine",
 	  { /*Rate*/ 0.62f, /*Mode*/ 0, /*Sampling*/ 1, /*Fit*/ 0, /*Scale*/ 0.30f, /*Rot*/ 0.5f,
-	    /*Copies*/ 9, /*Arrange*/ 0, /*Spread*/ 0.9f, /*Stagger*/ 0.13f,
+	    /*Copies*/ 9, /*Arrange*/ 0, /*Spread*/ 0.66f, /*Stagger*/ 0.13f,
 	    /*Key*/ 2, /*KeyCol*/ 0.10f, 0.13f, 0.22f, /*Tol*/ 0.22f, /*Soft*/ 0.12f,
 	    /*Tint*/ 1.0f, 1.0f, 1.0f, /*Opacity*/ 1.0f,
 	    /*Back*/ 0.0f, 0.0f, 0.0f, /*BackOp*/ 0.0f } },
