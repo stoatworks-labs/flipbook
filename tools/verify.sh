@@ -100,7 +100,7 @@ for pair in "Flipbook:FB01:FB02" "Flipbook Over:FB02:FB01"; do
 	symbols=$(nm -gU "$binary" 2>/dev/null)
 	literals=$(strings "$binary" 2>/dev/null)
 
-	if ! printf '%s\n' "$symbols" | grep -q plugMain; then
+	if ! grep -q plugMain <<<"$symbols"; then
 		printf '\033[31mFAILED: %s exports no plugMain\033[0m\n' "$name"
 		failures=$((failures + 1))
 		continue
@@ -108,10 +108,10 @@ for pair in "Flipbook:FB01:FB02" "Flipbook Over:FB02:FB01"; do
 
 	# The plugin id is a four-character literal in the registration, so it is in
 	# the binary's strings if and only if that translation unit survived.
-	if ! printf '%s\n' "$literals" | grep -q "^$want\$"; then
+	if ! grep -qx "$want" <<<"$literals"; then
 		printf '\033[31mFAILED: %s does not carry its own id %s\033[0m\n' "$name" "$want"
 		failures=$((failures + 1))
-	elif printf '%s\n' "$literals" | grep -q "^$unwanted\$"; then
+	elif grep -qx "$unwanted" <<<"$literals"; then
 		printf '\033[31mFAILED: %s also carries %s -- both registrations linked in\033[0m\n' \
 			"$name" "$unwanted"
 		failures=$((failures + 1))
