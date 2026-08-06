@@ -39,8 +39,8 @@ plugin's own playback and placement in WebGL2. Nothing is uploaded.
 | Build | Download | Size |
 | --- | --- | --- |
 | Universal (Apple Silicon + Intel) · .dmg disk image | [`flipbook-0.1.0-macos-universal.dmg`](https://github.com/stoatworks-labs/flipbook/releases/download/v0.1.0/flipbook-0.1.0-macos-universal.dmg) | 1.0 MB |
-| Universal (Apple Silicon + Intel) · .zip archive | [`flipbook-macos-universal.zip`](https://github.com/stoatworks-labs/flipbook/releases/latest/download/flipbook-macos-universal.zip) | 603 KB |
-| Universal (Apple Silicon + Intel) · .zip archive (OpenFX — Resolve, Vegas, Nuke) | [`flipbook-ofx-macos-universal.zip`](https://github.com/stoatworks-labs/flipbook/releases/latest/download/flipbook-ofx-macos-universal.zip) | 355 KB |
+| Universal (Apple Silicon + Intel) · .zip archive | [`flipbook-macos-universal.zip`](https://github.com/stoatworks-labs/flipbook/releases/latest/download/flipbook-macos-universal.zip) | 642 KB |
+| Universal (Apple Silicon + Intel) · .zip archive (OpenFX — Resolve, Vegas, Nuke) | [`flipbook-ofx-macos-universal.zip`](https://github.com/stoatworks-labs/flipbook/releases/latest/download/flipbook-ofx-macos-universal.zip) | 369 KB |
 
 </details>
 
@@ -57,7 +57,7 @@ plugin's own playback and placement in WebGL2. Nothing is uploaded.
 
 All builds, checksums and release notes: [github.com/stoatworks-labs/flipbook/releases](https://github.com/stoatworks-labs/flipbook/releases).
 
-The Windows builds are unsigned, so SmartScreen warns once.
+macOS builds are signed and notarised and open normally. The Windows builds are unsigned, so SmartScreen warns once.
 
 <!-- downloads:end -->
 
