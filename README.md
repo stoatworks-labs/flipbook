@@ -39,8 +39,8 @@ plugin's own playback and placement in WebGL2. Nothing is uploaded.
 | Build | Download | Size |
 | --- | --- | --- |
 | Universal (Apple Silicon + Intel) · .dmg disk image | [`flipbook-1.0.0-macos-universal.dmg`](https://github.com/stoatworks-labs/flipbook/releases/download/v1.0.0/flipbook-1.0.0-macos-universal.dmg) | 1.0 MB |
-| Universal (Apple Silicon + Intel) · .zip archive | [`flipbook-macos-universal.zip`](https://github.com/stoatworks-labs/flipbook/releases/latest/download/flipbook-macos-universal.zip) | 606 KB |
-| Universal (Apple Silicon + Intel) · .zip archive (OpenFX — Resolve, Vegas, Nuke) | [`flipbook-ofx-macos-universal.zip`](https://github.com/stoatworks-labs/flipbook/releases/latest/download/flipbook-ofx-macos-universal.zip) | 355 KB |
+| Universal (Apple Silicon + Intel) · .zip archive | [`flipbook-macos-universal.zip`](https://github.com/stoatworks-labs/flipbook/releases/latest/download/flipbook-macos-universal.zip) | 645 KB |
+| Universal (Apple Silicon + Intel) · .zip archive (OpenFX — Resolve, Vegas, Nuke) | [`flipbook-ofx-macos-universal.zip`](https://github.com/stoatworks-labs/flipbook/releases/latest/download/flipbook-ofx-macos-universal.zip) | 369 KB |
 
 </details>
 
