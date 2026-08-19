@@ -31,14 +31,14 @@ plugin's own playback and placement in WebGL2. Nothing is uploaded.
 
 ## Download
 
-**[v1.0.0](https://github.com/stoatworks-labs/flipbook/releases/tag/v1.0.0)** — prebuilt for macOS and Windows. Pick your platform:
+**[v1.0.1](https://github.com/stoatworks-labs/flipbook/releases/tag/v1.0.1)** — prebuilt for macOS and Windows. Pick your platform:
 
 <details>
 <summary><b>macOS</b> — Universal (Apple Silicon + Intel)</summary>
 
 | Build | Download | Size |
 | --- | --- | --- |
-| Universal (Apple Silicon + Intel) · .dmg disk image | [`flipbook-1.0.0-macos-universal.dmg`](https://github.com/stoatworks-labs/flipbook/releases/download/v1.0.0/flipbook-1.0.0-macos-universal.dmg) | 1.0 MB |
+| Universal (Apple Silicon + Intel) · .dmg disk image | [`flipbook-1.0.1-macos-universal.dmg`](https://github.com/stoatworks-labs/flipbook/releases/download/v1.0.1/flipbook-1.0.1-macos-universal.dmg) | 1.0 MB |
 | Universal (Apple Silicon + Intel) · .zip archive | [`flipbook-macos-universal.zip`](https://github.com/stoatworks-labs/flipbook/releases/latest/download/flipbook-macos-universal.zip) | 645 KB |
 | Universal (Apple Silicon + Intel) · .zip archive (OpenFX — Resolve, Vegas, Nuke) | [`flipbook-ofx-macos-universal.zip`](https://github.com/stoatworks-labs/flipbook/releases/latest/download/flipbook-ofx-macos-universal.zip) | 369 KB |
 
@@ -49,7 +49,7 @@ plugin's own playback and placement in WebGL2. Nothing is uploaded.
 
 | Build | Download | Size |
 | --- | --- | --- |
-| x64 · .exe installer | [`flipbook-1.0.0-windows-x86_64-setup.exe`](https://github.com/stoatworks-labs/flipbook/releases/download/v1.0.0/flipbook-1.0.0-windows-x86_64-setup.exe) | 315 KB |
+| x64 · .exe installer | [`flipbook-1.0.1-windows-x86_64-setup.exe`](https://github.com/stoatworks-labs/flipbook/releases/download/v1.0.1/flipbook-1.0.1-windows-x86_64-setup.exe) | 315 KB |
 | x64 · .zip archive | [`flipbook-windows-x86_64.zip`](https://github.com/stoatworks-labs/flipbook/releases/latest/download/flipbook-windows-x86_64.zip) | 359 KB |
 | x64 · .zip archive (OpenFX — Resolve, Vegas, Nuke) | [`flipbook-ofx-windows-x86_64.zip`](https://github.com/stoatworks-labs/flipbook/releases/latest/download/flipbook-ofx-windows-x86_64.zip) | 112 KB |
 
