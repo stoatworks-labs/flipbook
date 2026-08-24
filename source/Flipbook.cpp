@@ -527,6 +527,7 @@ void FlipbookPlugin::SetClockScaleForTest( double scale )
 void FlipbookPlugin::TickClockForTest()
 {
 	UpdateClock();
+	UpdateFrameAnchor();
 }
 
 double FlipbookPlugin::ClockScaleForTest() const
@@ -543,6 +544,7 @@ void FlipbookPlugin::SetSecondsForTest( double seconds )
 {
 	forcedSeconds = true;
 	hostSeconds   = seconds;
+	UpdateFrameAnchor();
 }
 
 double FlipbookPlugin::CurrentFramePos() const
@@ -553,8 +555,59 @@ double FlipbookPlugin::CurrentFramePos() const
 	const int count     = static_cast< int >( std::lround( params[ PT_LENGTH ] ) );
 	const int length    = RunLength( start, count, cells );
 
-	return FrameClock( hostSeconds - clockBase, bpm, barPhase, sync,
-	                   RateFromParam( params[ PT_RATE ] ), params[ PT_PHASE ], length );
+	const double elapsed = hostSeconds - clockBase;
+	const float rate     = RateFromParam( params[ PT_RATE ] );
+
+	// Free is anchored so that moving Rate changes the pace without cutting to
+	// a different cell -- see UpdateFrameAnchor. Until the operator has touched
+	// Rate this is exactly `elapsed * rate`, which is what FrameClock's Free
+	// branch returns, because the anchor starts at elapsed zero at position
+	// zero. Every other mode is the shared pure function, unchanged.
+	if( sync == SyncMode::Free )
+		return frameAnchor + ( elapsed - anchorSeconds ) * static_cast< double >( rate );
+
+	return FrameClock( elapsed, bpm, barPhase, sync, rate, params[ PT_PHASE ], length );
+}
+
+//---------------------------------------------------------------------------
+void FlipbookPlugin::UpdateFrameAnchor()
+{
+	const SyncMode sync  = static_cast< SyncMode >( Option( params[ PT_SYNC ], static_cast< int >( SyncMode::Count ) ) );
+	const float rate     = RateFromParam( params[ PT_RATE ] );
+	const double elapsed = hostSeconds - clockBase;
+
+	// Beat and Bar are meant to jump -- they re-lock to the transport, which is
+	// the point of them, and Manual ignores Rate entirely. Keep the anchor
+	// following the clock through all three so that returning to Free resumes
+	// rather than leaps.
+	if( sync != SyncMode::Free )
+	{
+		anchorSeconds = elapsed;
+		anchorRate    = rate;
+		return;
+	}
+
+	// First frame: leave the anchor at elapsed zero, position zero. That makes
+	// the expression in CurrentFramePos identical to FrameClock's Free branch
+	// for as long as nobody touches Rate, which is what keeps every
+	// rendered-frame test and tools/sweep.py measuring the same thing they
+	// measured before.
+	if( anchorRate < 0.0f )
+	{
+		anchorRate = rate;
+		return;
+	}
+
+	if( rate != anchorRate )
+	{
+		// Once per rate change, not once per frame: this carries the exact
+		// position forward rather than integrating it, so a long session cannot
+		// accumulate rounding into a drift. Frame rate still cannot affect which
+		// cell is showing.
+		frameAnchor += ( elapsed - anchorSeconds ) * static_cast< double >( anchorRate );
+		anchorSeconds = elapsed;
+		anchorRate    = rate;
+	}
 }
 
 int FlipbookPlugin::CellForCopy( int copyIndex, int cells ) const
@@ -686,7 +739,14 @@ void FlipbookPlugin::Render( int width, int height, const ActiveSheet& input, fl
 	{
 		clockBase    = hostSeconds;
 		resetPending = false;
+
+		// Starting again means starting again: a carried-forward position would
+		// survive the reset and leave the sheet wherever it had got to.
+		frameAnchor   = 0.0;
+		anchorSeconds = 0.0;
 	}
+
+	UpdateFrameAnchor();
 
 	//-----------------------------------------------------------------------
 	// Which sheet. The source has no input to offer, so it forces File however

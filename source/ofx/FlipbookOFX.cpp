@@ -604,6 +604,13 @@ private:
 		const PlayMode playMode = static_cast< PlayMode >( Option( static_cast< float >( modeChoice ),
 		                                                           static_cast< int >( PlayMode::Count ) ) );
 
+		// The plain product, deliberately: the FFGL build anchors its Free-mode
+		// frame position so that nudging Rate live does not cut to a different
+		// cell, and that anchor is a running carry which needs frames to arrive
+		// in order. This host renders arbitrary times in arbitrary order and can
+		// keyframe Rate, so an anchor here would make a frame depend on which
+		// frames happened to be rendered before it. A pure function of time is
+		// the right answer for a timeline; see Flipbook.h.
 		const double framePos = FrameClock( args.time / fps, 120.0f, 0.0f, syncMode,
 		                                    RateFromParam( static_cast< float >( rate->getValueAtTime( args.time ) ) ),
 		                                    static_cast< float >( phase->getValueAtTime( args.time ) ),

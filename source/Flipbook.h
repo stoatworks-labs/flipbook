@@ -200,9 +200,9 @@ private:
 	// The FFGL header never says what unit SetTime is in, and hosts disagree:
 	// Resolume hands over MILLISECONDS (measured live: 20.0 per frame at its
 	// 50 fps, and the SDK's own Particles sample divides by 1000), while the
-	// offline harness sends seconds. UpdateClock decides from the first
-	// plausible frame delta and sticks: 0.001..0.5 is a seconds-host frame,
-	// 2..500 is a milliseconds-host frame, anything else keeps waiting.
+	// offline harness sends seconds. UpdateClock calibrates the host's clock
+	// against a steady_clock and lets the ratio name the unit, over several
+	// agreeing frames, failing safe to the wall clock while undecided.
 	//---------------------------------------------------------------------
 	double clockScale  = 0.0;///< 0 until decided; then 1.0 or 0.001
 	double lastWallTime = -1.0;
@@ -218,6 +218,37 @@ private:
 	/// admissible where an integrated position would not be.
 	double clockBase   = 0.0;
 	bool resetPending  = false;
+
+	//---------------------------------------------------------------------
+	// Frame-position continuity across a Rate change.
+	//
+	// Which cell is shown stays a pure function of the frame position -- that
+	// is the whole design and none of it changes here. What changes is only
+	// which position a given clock reading maps to.
+	//
+	// `framePos = seconds * rate` means a rate change moves the position by
+	// `seconds * delta`, and `seconds` is however long the composition has been
+	// open. Nudging Rate an hour in is a jump of thousands of frames: the sheet
+	// cuts to an unrelated cell, which is what orrery issue #6 reported once
+	// the 1000x clock bug was out of the way. So remember the position reached
+	// so far and carry on from there at the new rate.
+	//
+	// Free only. Beat and Bar deliberately keep jumping: their contract is that
+	// a cell boundary lands on the host's grid, and an offset that made a rate
+	// change seamless would slide the sequence off the grid it exists to sit
+	// on. Manual is driven entirely by the Phase slider. Nor is any of this in
+	// the OpenFX build: that host renders arbitrary times in arbitrary order
+	// and can keyframe Rate, so a running anchor there would make a frame
+	// depend on which frames were rendered before it.
+	//
+	// Reset clears it along with `clockBase` -- starting again means starting
+	// again.
+	//---------------------------------------------------------------------
+	void UpdateFrameAnchor();
+
+	double frameAnchor   = 0.0; ///< frame position already reached at `anchorSeconds`
+	double anchorSeconds = 0.0; ///< the elapsed reading that position belongs to
+	float anchorRate     = -1.0f;///< rate in force since then; < 0 until the first frame
 	bool forcedSeconds = false;
 
 	float params[ PT_COUNT ] = { 0.0f };

@@ -43,6 +43,10 @@ if [ ! -x "$BUILD/fbtest" ]; then
 fi
 
 step "the cell on screen, against Playback.cpp"
+# Needs no GPU, so it goes first: a machine that cannot make a GL context
+# can still run it.
+check "$BUILD/fbtest" --rate
+
 check "$BUILD/fbtest" --frames
 
 step "where every copy landed, against Placement.cpp"

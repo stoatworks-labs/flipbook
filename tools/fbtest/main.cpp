@@ -463,6 +463,94 @@ void useSheet( FlipbookPlugin& plugin, const std::string& path, int columns, int
 }
 
 //---------------------------------------------------------------------------
+// --rate
+//
+/// Prove a Rate change does not cut to a different cell.
+///
+/// The frame position either side of the change is read directly rather than
+/// comparing rendered frames: a sheet loops, so a position a whole number of
+/// passes away shows exactly the same cell and two frames would match for
+/// entirely the wrong reason. The number says it outright.
+///
+/// Needs no GL, so it runs ahead of the context.
+//---------------------------------------------------------------------------
+int checkRate()
+{
+	int failures = 0;
+
+	auto check = [ &failures ]( const char* what, double got, double want, double tol ) {
+		const bool ok = std::fabs( got - want ) <= tol;
+		std::printf( "rate %-38s got=%-14.6f want=%-14.6f %s\n", what, got, want, ok ? "ok" : "FAILED" );
+		if( !ok )
+			++failures;
+	};
+
+	// Slider positions, not frames per second.
+	const float sliders[] = { 0.10f, 0.95f, 0.00f, 0.80f };
+
+	FlipbookPlugin plugin( false );
+	plugin.SetClockScaleForTest( 1.0 );//seconds, said out loud rather than inferred
+
+	// An hour in, which is where the old arithmetic hurt most and where a live
+	// operator actually is when they reach for the slider. The clock only ever
+	// goes forwards from here: winding it back between steps would move the
+	// position for a reason that has nothing to do with Rate.
+	double seconds = 3600.0;
+	plugin.SetSecondsForTest( seconds );
+
+	// Untouched, the anchor must leave the old expression exactly as it was --
+	// this is what keeps every rendered-frame test and tools/sweep.py measuring
+	// the same thing they measured before. The plugin's own default is asked
+	// for rather than written down here: a test that hard-codes it goes quietly
+	// wrong the day the default moves.
+	check( "untouched == seconds * rate", plugin.CurrentFramePos(),
+	       seconds * static_cast< double >( RateFromParam( plugin.GetFloatParameter( PT_RATE ) ) ),
+	       1e-3 );
+
+	for( const float slider : sliders )
+	{
+		const double before = plugin.CurrentFramePos();
+
+		// The same instant, a new rate: nothing about the clock has moved, so
+		// nothing about which cell is showing may either.
+		plugin.SetFloatParameter( PT_RATE, slider );
+		plugin.SetSecondsForTest( seconds );
+		check( "a Rate change does not move the sheet", plugin.CurrentFramePos(), before, 1e-3 );
+
+		// And then it must actually run at the new rate.
+		const double resumed = plugin.CurrentFramePos();
+		seconds += 1.0;
+		plugin.SetSecondsForTest( seconds );
+		check( "  and runs at the new rate afterwards", plugin.CurrentFramePos() - resumed,
+		       static_cast< double >( RateFromParam( slider ) ), 1e-3 );
+	}
+
+	// Bar sync is deliberately NOT anchored: its contract is that a cell
+	// boundary lands on the bar line, so it must still be the plain transport
+	// product. If the anchor ever leaks into it, beat sync stops meaning
+	// anything.
+	{
+		FlipbookPlugin bar( false );
+		bar.SetClockScaleForTest( 1.0 );
+		bar.SetFloatParameter( PT_SYNC, static_cast< float >( SyncMode::Bar ) );
+		bar.SetBeatInfo( 120.0f, 0.25f );//120bpm: a bar is two seconds
+		bar.SetSecondsForTest( 8.0 );
+		const double before = bar.CurrentFramePos();
+
+		bar.SetFloatParameter( PT_RATE, 0.95f );
+		bar.SetSecondsForTest( 8.0 );
+
+		const bool jumped = std::fabs( bar.CurrentFramePos() - before ) > 1e-3;
+		std::printf( "rate %-38s %s\n", "Bar sync still re-locks", jumped ? "ok" : "FAILED" );
+		if( !jumped )
+			++failures;
+	}
+
+	std::printf( failures == 0 ? "rate: ok\n" : "rate: %d FAILED\n", failures );
+	return failures;
+}
+
+//---------------------------------------------------------------------------
 // --frames
 //---------------------------------------------------------------------------
 int checkFrames( const std::string& sheetPath )
@@ -1323,6 +1411,7 @@ void usage()
 		"  --out PATH          render a frame\n"
 		"  --list              parameters, types, defaults and ranges\n"
 		"  --frames            the cell on screen against Playback.cpp\n"
+		"  --rate              a Rate change does not cut to a different cell\n"
 		"  --copies            where each copy landed, and which cell it showed\n"
 		"  --aspect            a square cell stays square off 1:1\n"
 		"  --seam              no cell bleeds into its neighbour\n"
@@ -1369,6 +1458,7 @@ int main( int argc, char** argv )
 	bool doSeam   = false;
 	bool doKey     = false;
 	bool doPresets = false;
+	bool doRate    = false;
 
 	for( int i = 1; i < argc; ++i )
 	{
@@ -1390,12 +1480,13 @@ int main( int argc, char** argv )
 		else if( arg == "--effect" ) effect = true;
 		else if( arg == "--list" ) doList = true;
 		else if( arg == "--frames" ) doFrames = true;
+		else if( arg == "--rate" ) doRate = true;
 		else if( arg == "--copies" ) doCopies = true;
 		else if( arg == "--aspect" ) doAspect = true;
 		else if( arg == "--seam" ) doSeam = true;
 		else if( arg == "--key" ) doKey = true;
 		else if( arg == "--presets" ) doPresets = true;
-		else if( arg == "--all" ) doFrames = doCopies = doAspect = doSeam = doKey = doPresets = true;
+		else if( arg == "--all" ) doFrames = doCopies = doAspect = doSeam = doKey = doPresets = doRate = true;
 		else if( arg == "--size" )
 		{
 			const std::string value = next();
@@ -1427,12 +1518,24 @@ int main( int argc, char** argv )
 	if( !describePath.empty() )
 		return describeSheet( describePath, columns, rows );
 
-	const bool anything = doList || doFrames || doCopies || doAspect || doSeam || doKey || doPresets
+	const bool anything = doList || doFrames || doCopies || doAspect || doSeam || doKey || doPresets || doRate
 	                      || !outPath.empty() || !sequenceDir.empty();
 	if( !anything )
 	{
 		usage();
 		return 1;
+	}
+
+	// Ahead of the GL context on purpose: this one needs no GPU, so it still
+	// runs on a machine that cannot make a context at all.
+	if( doRate )
+	{
+		const int rateFailures = checkRate();
+		if( !doList && !doFrames && !doCopies && !doAspect && !doSeam && !doKey && !doPresets
+		    && outPath.empty() && sequenceDir.empty() )
+			return rateFailures == 0 ? 0 : 1;
+		if( rateFailures != 0 )
+			return 1;
 	}
 
 	CGLContextObj context = createContext();
