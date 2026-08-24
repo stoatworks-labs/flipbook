@@ -275,3 +275,10 @@ take a working 5×5 explosion and declare it an 8×8, which is not a look, it is
 breakage. It also leaves alone Position, Seed, Mix and Sync; Sync in particular
 cannot be in the table, because the FFGL build offers beat modes the OFX build
 has no clock for and an index would mean different things in different hosts.
+
+## Notes
+
+`docs/NOTES.md` carries this repo's working notes — current status, decisions
+already made, and the traps that have actually bitten. Read it before changing
+anything non-obvious. Cross-cutting fleet knowledge lives in
+[fleet-notes](https://github.com/stoatworks-labs/fleet-notes).
