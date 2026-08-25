@@ -36,8 +36,9 @@ for your own material.
 
 ### OpenFX hosts
 
-Copy `Flipbook.ofx.bundle` into `/Library/OFX/Plugins` (macOS) or
-`C:\Program Files\Common Files\OFX\Plugins` (Windows). One bundle carries both plugins.
+Copy `Flipbook.ofx.bundle` into `/Library/OFX/Plugins` (macOS),
+`C:\Program Files\Common Files\OFX\Plugins` (Windows) or `/usr/OFX/Plugins`
+(Linux). One bundle carries both plugins.
 
 It is not a reimplementation: the sheet decoding, the frame selection, the placement and the
 parameter curves are the same source files. Only the per-pixel work is written twice, because the
