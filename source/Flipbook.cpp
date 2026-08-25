@@ -214,7 +214,7 @@ FlipbookPlugin::FlipbookPlugin( bool overInput_ ) :
 	SetParamInfof( PT_BACK_R, "Background", FF_TYPE_RED );
 	SetParamInfof( PT_BACK_G, "Background_Green", FF_TYPE_GREEN );
 	SetParamInfof( PT_BACK_B, "Background_Blue", FF_TYPE_BLUE );
-	SetParamInfof( PT_BACK_OPACITY, "Background Opacity", FF_TYPE_STANDARD );
+	SetParamInfof( PT_BACK_OPACITY, "Background Alpha", FF_TYPE_STANDARD );
 
 	SetParamInfof( PT_MIX, "Mix", FF_TYPE_STANDARD );
 
@@ -784,7 +784,7 @@ void FlipbookPlugin::Render( int width, int height, const ActiveSheet& input, fl
 
 	//-----------------------------------------------------------------------
 	// Background pass. Always drawn, even with no sheet: it is what makes
-	// Background Opacity work, and for the effect it is what puts the clip
+	// Background Alpha work, and for the effect it is what puts the clip
 	// down.
 	//-----------------------------------------------------------------------
 	glBindVertexArray( emptyVAO );

@@ -23,7 +23,7 @@
 # squashed circle rather than as a deliberate choice. Fill crops the disc off
 # the top and bottom instead, so what fills the frame is pure stripe with no
 # edge in it at all.
-0.0   Background Opacity=1.0
+0.0   Background Alpha=1.0
 0.0   Fit=1
 0.0   Key=3
 0.0   Copies=1

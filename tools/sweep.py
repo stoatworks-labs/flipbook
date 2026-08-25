@@ -87,10 +87,10 @@ CONTEXT = {
     # is pinned to it.
     "Key": ["Sync=3", "Phase=0.0", "Start Frame=0", "Frame Count=1"],
     # The background colour is invisible while the background is transparent.
-    "Background": ["Background Opacity=1.0"],
-    "Background_Green": ["Background Opacity=1.0"],
-    "Background_Blue": ["Background Opacity=1.0"],
-    "Background Opacity": ["Background=1.0", "Background_Green=0.5"],
+    "Background": ["Background Alpha=1.0"],
+    "Background_Green": ["Background Alpha=1.0"],
+    "Background_Blue": ["Background Alpha=1.0"],
+    "Background Alpha": ["Background=1.0", "Background_Green=0.5"],
 }
 
 # Where the two obvious ends are not two pictures, or are not both legal.
@@ -227,6 +227,14 @@ def main():
             if kind == "event":
                 if args.verbose:
                     print(f"  skip {name:22s} (an event has no value to sweep)")
+                continue
+
+            # The About block's credit line is a text parameter. The host shows
+            # it as a labelled value and it never reaches a pixel, so sweeping
+            # it as a float reports it dead every time and buries a real one.
+            if kind == "text":
+                if args.verbose:
+                    print(f"  skip {name:22s} (a text label, not a value)")
                 continue
 
             if kind == "file":

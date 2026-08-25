@@ -1014,7 +1014,7 @@ void describeParams( OFX::ImageEffectDescriptor& desc, bool overVariant )
 	backParam->setParent( *colourGroup );
 	page->addChild( *backParam );
 
-	defineSlider( desc, page, kParamBackOpacity, "Background Opacity",
+	defineSlider( desc, page, kParamBackOpacity, "Background Alpha",
 	              "The plugin's own backdrop. Zero leaves the output transparent.", 0.0 )
 		->setParent( *colourGroup );
 

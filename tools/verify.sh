@@ -65,7 +65,7 @@ step "every factory preset frames itself"
 check "$BUILD/fbtest" --presets
 
 step "no dead controls"
-check python3 tools/sweep.py
+check python3 tools/sweep.py --build "$BUILD"
 
 # ---------------------------------------------------------------------------
 # Registration.

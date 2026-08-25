@@ -41,7 +41,7 @@ void main()
 #ifdef FLIPBOOK_OVER_INPUT
 	// The clip arrives premultiplied and leaves the same way, so it is laid
 	// down untouched and the plugin's own background colour then veils it --
-	// which keeps Background Opacity meaning the same thing in both plugins
+	// which keeps Background Alpha meaning the same thing in both plugins
 	// rather than becoming a second, differently-behaved control on this side.
 	vec4 clip = texture( Clip, vUV * MaxUV );
 	vec4 veil = vec4( BackColour.rgb * BackColour.a, BackColour.a );
