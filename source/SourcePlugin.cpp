@@ -37,7 +37,7 @@ static CFFGLPluginInfo PluginInfo(
 	0,                                                // Plugin major version number
 	1,                                                // Plugin minor version number
 	FF_SOURCE,                                        // Plugin type
-	"Sprite sheet player: a page of stills, animated", // Plugin description
+	"Sprite sheet player: a page of stills, animated.\n\nPoint it at a page of stills, tell it the grid, and it plays the cells as an animation - one copy or sixty-four of them, placed and scattered as you like.\n\nThe sprites are drawn as geometry rather than tested for at every pixel, which is why a screen full of small copies stays cheap and stays cheap at 4K.\n\nStart from a Preset, at the bottom.",// Plugin description
 	"Flipbook FFGL source"                            // About
 );
 
