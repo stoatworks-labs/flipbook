@@ -11,3 +11,6 @@
 /.vscode/
 *.xcodeproj/xcuserdata/
 /build-*/
+
+# Agent worktrees - not authored here.
+.claude/
