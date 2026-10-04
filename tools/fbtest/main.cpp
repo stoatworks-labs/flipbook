@@ -17,6 +17,7 @@
         --seam              no cell bleeds into its neighbour
         --key               the four key modes, on known colours
         --presets           every factory preset frames itself on the raster
+        --hosts             a chosen preset survives every host behaviour
 
     ## The synthetic sheet
 
@@ -52,6 +53,9 @@
     `--presets` checks the framing of every factory preset, which none of the
     others touch: they all use their own parameter values, and the sweep only
     asks whether the Preset dropdown changes the picture at all.
+
+    `--hosts` is the other half of the presets: not whether a preset looks
+    right, but whether it stays chosen once a host starts pushing values back.
 
     None of them catches a dead uniform. See `tools/sweep.py`.
 */
@@ -547,6 +551,124 @@ int checkRate()
 	}
 
 	std::printf( failures == 0 ? "rate: ok\n" : "rate: %d FAILED\n", failures );
+	return failures;
+}
+
+//---------------------------------------------------------------------------
+// --hosts
+//
+/// Prove a chosen preset stays chosen whatever the host does with it.
+///
+/// The host owns parameter state, and what it does with the values a preset
+/// writes is not the plugin's to decide. Three behaviours matter: a host that
+/// consumes the value events and pushes our own numbers back ("honours"), one
+/// that ignores them and carries on pushing what it still believes ("ignores"),
+/// and one that honours them but hands back a rounded copy ("quantises").
+/// Resolume is the second and third, and before the fix six of the seven
+/// presets failed in the "ignores" column: the dropdown snapped back to Custom
+/// the instant one was chosen. The seventh, As Exported, is the defaults, so a
+/// host restating them is agreeing with it.
+///
+/// The fourth column is the other side of the same guard. After all that the
+/// operator moving a covered slider must still drop the dropdown to Custom --
+/// a guard that swallowed real edits would pass the first three.
+///
+/// Needs no GL, so it runs ahead of the context.
+//---------------------------------------------------------------------------
+int checkHosts()
+{
+	int count               = 0;
+	const unsigned int* ids = FlipbookPlugin::PresetParamIDsForTest( count );
+
+	int scale = 0;
+	while( scale < count && ids[ scale ] != PT_SCALE )
+		++scale;
+	if( scale == count )
+	{
+		std::printf( "hosts: Scale is not a preset parameter any more -- pick another for the operator column\n" );
+		return 1;
+	}
+
+	enum Behaviour
+	{
+		Honours,
+		Ignores,
+		Quantises,
+		BehaviourCount
+	};
+
+	std::printf( "hosts %-14s %8s %8s %10s %9s\n", "", "honours", "ignores", "quantises", "operator" );
+
+	int failures = 0;
+	for( int index = 1; index <= presets::kCount; ++index )
+	{
+		const presets::Preset& preset = presets::kPresets[ index - 1 ];
+		bool held[ BehaviourCount ]   = {};
+		bool operatorWins             = false;
+
+		for( int b = 0; b < BehaviourCount; ++b )
+		{
+			FlipbookPlugin plugin( false );
+
+			// What the host believes before the preset is chosen.
+			std::vector< float > believed( static_cast< size_t >( count ) );
+			for( int j = 0; j < count; ++j )
+				believed[ j ] = plugin.GetFloatParameter( ids[ j ] );
+
+			plugin.SetFloatParameter( PT_PRESET, static_cast< float >( index ) );
+
+			// Twice, because a host that pushes every frame pushes more than
+			// once, and the bug this guards against needed only one.
+			for( int pass = 0; pass < 2; ++pass )
+			{
+				for( int j = 0; j < count; ++j )
+				{
+					const float ours = plugin.GetFloatParameter( ids[ j ] );
+					float push       = ours;
+					if( b == Ignores )
+						push = believed[ j ];
+					else if( b == Quantises )
+						push = std::round( ours * 1000.0f ) / 1000.0f;
+					plugin.SetFloatParameter( ids[ j ], push );
+				}
+			}
+
+			bool ok = std::lround( plugin.GetFloatParameter( PT_PRESET ) ) == index;
+			for( int j = 0; j < count && ok; ++j )
+			{
+				// The plugin's own quantisation allowance, and a little over.
+				if( std::fabs( plugin.GetFloatParameter( ids[ j ] ) - preset.v[ j ] ) > 1.5e-3f )
+					ok = false;
+			}
+			held[ b ] = ok;
+			if( !ok )
+				++failures;
+
+			// Then the operator takes over. On the "ignores" host, because that
+			// is where the guard is busiest -- it has just swallowed every one
+			// of the host's pushes -- and it must still let a real move through.
+			if( b == Ignores )
+			{
+				float moved = 0.123f;
+				if( std::fabs( moved - preset.v[ scale ] ) < 0.01f || std::fabs( moved - believed[ scale ] ) < 0.01f )
+					moved = 0.877f;
+
+				plugin.SetFloatParameter( PT_SCALE, moved );
+				operatorWins = std::lround( plugin.GetFloatParameter( PT_PRESET ) ) == 0
+				               && plugin.GetFloatParameter( PT_SCALE ) == moved;
+				if( !operatorWins )
+					++failures;
+			}
+		}
+
+		std::printf( "hosts %-14s %8s %8s %10s %9s\n", preset.name,
+		             held[ Honours ] ? "ok" : "FAILED",
+		             held[ Ignores ] ? "ok" : "FAILED",
+		             held[ Quantises ] ? "ok" : "FAILED",
+		             operatorWins ? "ok" : "FAILED" );
+	}
+
+	std::printf( failures == 0 ? "hosts: ok\n" : "hosts: %d FAILED\n", failures );
 	return failures;
 }
 
@@ -1417,6 +1539,7 @@ void usage()
 		"  --seam              no cell bleeds into its neighbour\n"
 		"  --key               the four key modes on known colours\n"
 		"  --presets           every factory preset frames itself on the raster\n"
+		"  --hosts             a chosen preset survives every host behaviour\n"
 		"  --all               every check above\n"
 		"\n"
 		"  --file PATH         the sheet to use (default: a temporary synthetic one)\n"
@@ -1459,6 +1582,7 @@ int main( int argc, char** argv )
 	bool doKey     = false;
 	bool doPresets = false;
 	bool doRate    = false;
+	bool doHosts   = false;
 
 	for( int i = 1; i < argc; ++i )
 	{
@@ -1486,7 +1610,8 @@ int main( int argc, char** argv )
 		else if( arg == "--seam" ) doSeam = true;
 		else if( arg == "--key" ) doKey = true;
 		else if( arg == "--presets" ) doPresets = true;
-		else if( arg == "--all" ) doFrames = doCopies = doAspect = doSeam = doKey = doPresets = doRate = true;
+		else if( arg == "--hosts" ) doHosts = true;
+		else if( arg == "--all" ) doFrames = doCopies = doAspect = doSeam = doKey = doPresets = doRate = doHosts = true;
 		else if( arg == "--size" )
 		{
 			const std::string value = next();
@@ -1519,22 +1644,26 @@ int main( int argc, char** argv )
 		return describeSheet( describePath, columns, rows );
 
 	const bool anything = doList || doFrames || doCopies || doAspect || doSeam || doKey || doPresets || doRate
-	                      || !outPath.empty() || !sequenceDir.empty();
+	                      || doHosts || !outPath.empty() || !sequenceDir.empty();
 	if( !anything )
 	{
 		usage();
 		return 1;
 	}
 
-	// Ahead of the GL context on purpose: this one needs no GPU, so it still
-	// runs on a machine that cannot make a context at all.
-	if( doRate )
+	// Ahead of the GL context on purpose: these need no GPU, so they still run
+	// on a machine that cannot make a context at all.
+	if( doRate || doHosts )
 	{
-		const int rateFailures = checkRate();
+		int gpuFreeFailures = 0;
+		if( doRate )
+			gpuFreeFailures += checkRate();
+		if( doHosts )
+			gpuFreeFailures += checkHosts();
 		if( !doList && !doFrames && !doCopies && !doAspect && !doSeam && !doKey && !doPresets
 		    && outPath.empty() && sequenceDir.empty() )
-			return rateFailures == 0 ? 0 : 1;
-		if( rateFailures != 0 )
+			return gpuFreeFailures == 0 ? 0 : 1;
+		if( gpuFreeFailures != 0 )
 			return 1;
 	}
 

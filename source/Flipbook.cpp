@@ -273,6 +273,9 @@ FFResult FlipbookPlugin::SetFloatParameter( unsigned int index, float value )
 	if( index >= PT_ABOUT_TEXT )
 		return stoatworks::about::handleParam( index - PT_ABOUT_TEXT, value ) ? FF_SUCCESS : FF_FAIL;
 
+	// Before applyPreset can run -- see seedHostValues.
+	seedHostValues();
+
 	if( index == PT_PRESET )
 	{
 		const int chosen = static_cast< int >( std::lround( value ) );
@@ -292,6 +295,14 @@ FFResult FlipbookPlugin::SetFloatParameter( unsigned int index, float value )
 		return FF_SUCCESS;
 	}
 
+	// The host may be restating a value it still believes in rather than the
+	// operator moving anything. Letting that through would overwrite the
+	// preset's value in params[] AND read as an edit, dropping the dropdown
+	// back to Custom -- which is what makes presets look like they cannot be
+	// selected at all.
+	if( hostIsRestatingItself( index, value ) )
+		return FF_SUCCESS;
+
 	const float previous = params[ index ];
 	params[ index ]      = value;
 
@@ -302,9 +313,10 @@ FFResult FlipbookPlugin::SetFloatParameter( unsigned int index, float value )
 		contentDirty = true;
 
 	// A slider moved while a preset is active means the operator has taken
-	// over: the dropdown falls back to Custom. The equality guard matters --
-	// hosts that honour the value events echo the preset's own values straight
-	// back through here, and that echo must not un-set the preset.
+	// over: the dropdown falls back to Custom. The tolerance here is
+	// deliberately tighter than the quantisation allowance in
+	// hostIsRestatingItself: a restatement never reaches this point, so
+	// anything that does is a real move.
 	const int active = static_cast< int >( std::lround( params[ PT_PRESET ] ) );
 	if( active > 0 && std::fabs( value - previous ) > 1e-4f )
 	{
@@ -312,6 +324,13 @@ FFResult FlipbookPlugin::SetFloatParameter( unsigned int index, float value )
 		{
 			if( id == index )
 			{
+				// Logged, unlike an ordinary parameter change: it is a state
+				// change an operator can be surprised by, it happens once rather
+				// than per frame, and diagnosing the original report (vertigo #2)
+				// needed a code read precisely because nothing said it had.
+				diag::info( "preset dropped to Custom: parameter "
+				            + std::to_string( index ) + " moved to "
+				            + std::to_string( value ) );
 				params[ PT_PRESET ] = 0.0f;
 				RaiseParamEvent( PT_PRESET, FF_EVENT_FLAG_VALUE );
 				break;
@@ -320,6 +339,70 @@ FFResult FlipbookPlugin::SetFloatParameter( unsigned int index, float value )
 	}
 
 	return FF_SUCCESS;
+}
+
+float FlipbookPlugin::presetValue( int presetIndex, unsigned int id ) const
+{
+	if( presetIndex <= 0 || presetIndex > presets::kCount )
+		return -1.0f;
+
+	const presets::Preset& preset = presets::kPresets[ presetIndex - 1 ];
+	for( int j = 0; j < presets::kParamCount; ++j )
+		if( kPresetParamIDs[ j ] == id )
+			return preset.v[ j ];
+
+	return -1.0f;
+}
+
+void FlipbookPlugin::seedHostValues()
+{
+	// Seeded on first parameter traffic rather than in the constructor, so the
+	// whole mechanism stays in one place. It has to happen BEFORE applyPreset
+	// can run: seeding afterwards would record the preset's own values as the
+	// host's opening position, and the host's very next restatement would then
+	// look like an edit -- which is the bug this exists to fix, reintroduced.
+	if( hostValuesSeeded )
+		return;
+
+	for( unsigned int i = 0; i < PT_COUNT; ++i )
+		hostValues[ i ] = params[ i ];
+	hostValuesSeeded = true;
+}
+
+bool FlipbookPlugin::hostIsRestatingItself( unsigned int index, float value )
+{
+	const float lastFromHost = hostValues[ index ];
+	hostValues[ index ]      = value;
+
+	const float fromPreset =
+		presetValue( static_cast< int >( std::lround( params[ PT_PRESET ] ) ), index );
+	if( fromPreset < 0.0f )
+		return false;
+
+	// A quantisation allowance rather than a float epsilon. A host that keeps
+	// its parameters shorter than a float -- or round-trips them through a UI,
+	// a MIDI value or a saved composition -- hands back a number near ours
+	// rather than ours, and 1e-4 read that as an edit.
+	constexpr float kSame = 1e-3f;
+
+	if( std::fabs( value - fromPreset ) <= kSame )
+	{
+		// The host agreeing with the preset. Nothing to write -- and writing it
+		// would actively hurt: a host that quantises hands back a ROUNDED copy
+		// of our own value, params[] would take the rounding, and the existing
+		// "did a covered parameter move?" test works to a tighter tolerance
+		// than this one and would read that rounding as an edit.
+		return true;
+	}
+
+	if( std::fabs( value - lastFromHost ) > kSame )
+		return false;//neither: the operator has taken over
+
+	// Deliberately not logged. A host that pushes its parameters every frame
+	// would put a line here every frame, and a log that scrolls is a log nobody
+	// reads. The event worth recording is the fallback to Custom, which happens
+	// once.
+	return true;
 }
 
 void FlipbookPlugin::applyPreset( int presetIndex )
@@ -339,6 +422,14 @@ void FlipbookPlugin::applyPreset( int presetIndex )
 		// The copy is what changes the picture; the event only tells the host
 		// to re-read the slider. A host that ignores it renders the preset
 		// correctly and merely shows stale knobs.
+		//
+		// hostValues[ id ] is deliberately NOT written here. It records what
+		// the HOST last said, and the host has not said anything yet -- it
+		// still believes the values from before the preset was chosen.
+		// Recording the preset's own values as the host's opening position
+		// makes its very next restatement look like an operator edit, and the
+		// dropdown snaps straight back to Custom. `fbtest --hosts` fails in the
+		// "ignores" column without this.
 		params[ id ] = preset.v[ j ];
 		RaiseParamEvent( id, FF_EVENT_FLAG_VALUE );
 	}
@@ -545,6 +636,12 @@ void FlipbookPlugin::SetSecondsForTest( double seconds )
 	forcedSeconds = true;
 	hostSeconds   = seconds;
 	UpdateFrameAnchor();
+}
+
+const unsigned int* FlipbookPlugin::PresetParamIDsForTest( int& count )
+{
+	count = presets::kParamCount;
+	return kPresetParamIDs;
 }
 
 double FlipbookPlugin::CurrentFramePos() const

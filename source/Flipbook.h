@@ -115,6 +115,10 @@ public:
 	/// mean".
 	void SetSecondsForTest( double seconds );
 
+	/// The ParamIds a preset drives, in presets::Param order, so `--hosts` can
+	/// play a host pushing them back without a second copy of the binding.
+	static const unsigned int* PresetParamIDsForTest( int& count );
+
 private:
 	/// The ParamId each presets::Param drives, in presets::Param order. The
 	/// preset table stays host-agnostic; this is the FFGL binding of it.
@@ -129,6 +133,28 @@ private:
 	/// Copy a factory preset's values into params[] and raise value events so
 	/// the host re-reads the sliders. `presetIndex` is 1-based; 0 is Custom.
 	void applyPreset( int presetIndex );
+
+	/// The value `presetIndex` holds for `id`, or -1 if it holds none.
+	float presetValue( int presetIndex, unsigned int id ) const;
+
+	/// Record the host's opening position, once, before any preset can run.
+	void seedHostValues();
+
+	/**
+		Is this the host restating a value it already held, rather than the
+		operator moving something?
+
+		**The host owns parameter state.** Resolume does not consume value
+		events: after applyPreset raises them it carries on restating the
+		values it held BEFORE the preset. Written straight into params[] those
+		restatements overwrite the preset, and -- because they differ from what
+		params[] now holds -- they also read as an operator edit and drop the
+		dropdown back to Custom. The symptom is a preset that cannot be
+		selected at all.
+
+		Ported from tinsel a36e133, where this was diagnosed and fixed.
+	*/
+	bool hostIsRestatingItself( unsigned int index, float value );
 
 	void ReloadSheet();
 	bool UploadSheet();
@@ -252,6 +278,11 @@ private:
 	bool forcedSeconds = false;
 
 	float params[ PT_COUNT ] = { 0.0f };
+
+	/// The last value the host pushed for each parameter -- what makes a
+	/// restatement distinguishable from an edit. See hostIsRestatingItself.
+	float hostValues[ PT_COUNT ] = {};
+	bool hostValuesSeeded        = false;
 };
 
 } // namespace flipbook

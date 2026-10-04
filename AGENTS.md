@@ -232,6 +232,13 @@ on a moving sequence, on a still and under `--quirks fusion`.
   and None are checked on the sheet's one half-alpha cell, because on an opaque
   cell they are the same picture; Luma is checked both keeping and removing,
   because "removes everything" would otherwise pass.
+- **`--hosts`** chooses every preset against three hosts — one that honours the
+  value events, one that ignores them, one that hands back a rounded copy — and
+  checks the preset is still chosen and still in `params[]` afterwards. Then the
+  operator moves Scale, which must still drop it to Custom. Needs no GL. Against
+  the unfixed code six of the seven presets fail in the "ignores" column — all
+  but As Exported, which *is* the defaults and so gives the host nothing to
+  restate.
 - **`sweep.py`** is the only thing that catches a dead control.
 
 The OFX build is smoke-tested with `ofxprobe` from
@@ -305,8 +312,21 @@ parameter so the host re-reads its sliders, the OFX side setValues inside one
 edit block so undo takes the whole preset back at once. A host that ignores the
 events still renders the preset correctly and merely shows stale knobs. Editing
 any covered parameter afterwards flips the dropdown back to Custom — judged by
-comparing values, not by the change reason, so a host echoing our own writes
-cannot un-set the preset.
+comparing values, not by the change reason.
+
+**The host owns parameter state, and Resolume does not consume the value
+events.** After a preset it carries on restating the values it held *before*,
+and comparing those against `params[]` alone read the host's own echo as the
+operator taking over: the dropdown snapped straight back to Custom, so no preset
+could be chosen at all. That was the fleet's bug (vertigo #2, fixed first in
+tinsel `a36e133`); flipbook carried it until the port landed. While a preset is
+active an incoming value is now one of three things, told apart by *what it is*:
+the preset's own value within 1e-3 (the host agreeing, or handing back a rounded
+copy), the host's own last word from `hostValues[]` (restating itself), or an
+edit. Only an edit is written. `applyPreset` must **not** record the preset's
+values in `hostValues[]` — the host has not spoken yet, and doing so makes its
+next restatement look like an edit, which is the same bug again. The FFGL build
+also logs the drop to Custom with the parameter and value that caused it.
 
 **What a preset covers here is the unusual part.** It never touches the Sheet
 group — not the file, not Columns, Rows, Start Frame or Frame Count. Those

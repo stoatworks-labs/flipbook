@@ -12,6 +12,9 @@
 #   --seam        does any cell bleed into its neighbour under either filter
 #   --key         do the four key modes do four different things
 #   --presets     does every factory preset put its copies on the raster
+#   --hosts       does a chosen preset stay chosen while the host pushes values
+#                 back -- honoured, ignored or rounded -- and still give way to
+#                 the operator
 #   sweep.py      does every control actually reach the picture
 #   registration  does each bundle contain exactly its own plugin
 #   lipo          is the macOS build really universal
@@ -140,9 +143,13 @@ SHADERS_PY
 step "shaders: every one through a real GLSL compiler"
 check shaders_compile
 
-step "the cell on screen, against Playback.cpp"
+step "a chosen preset survives every host behaviour"
 # Needs no GPU, so it goes first: a machine that cannot make a GL context
 # can still run it.
+check "$BUILD/fbtest" --hosts
+
+step "the cell on screen, against Playback.cpp"
+# Needs no GPU either.
 check "$BUILD/fbtest" --rate
 
 check "$BUILD/fbtest" --frames
