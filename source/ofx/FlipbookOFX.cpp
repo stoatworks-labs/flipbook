@@ -23,10 +23,10 @@
 /// the edit, and it is the one mode that behaves identically in both builds.
 ///
 /// **OFX hands render time in frames.** The clip's frame rate turns it into the
-/// seconds `FrameClock` wants. A host that reports no frame rate gets 24,
-/// Resolve's default timeline rate, which is wrong somewhere but is never
-/// zero -- and Resolve's own Fusion page is such a host: it reports none,
-/// so there the sheet plays as if the timeline were 24 fps.
+/// seconds `FrameClock` wants: the output clip's, the source clip's or the
+/// effect's (Resolve's Fusion page reports it only on the effect). A host
+/// that reports none anywhere gets 24, Resolve's default timeline rate,
+/// which is wrong somewhere but is never zero.
 ///
 /// **There is no "Sheet From: Input Clip".** It exists in the FFGL effect
 /// because Resolume's own media management is the reason to want it. An OFX
@@ -64,7 +64,9 @@ constexpr const char* kPluginDescription =
 	"order — looping, ping-ponging or once. Copies can be arranged and "
 	"staggered so the animation travels through them. The frame is a pure "
 	"function of the clock, so the loop point cannot drift.\n\n"
-	"Fusion reports no frame rate; there, time-based controls assume 24 fps.\n\n"
+	"Resolve's Fusion page reports the frame rate on the effect but not on its "
+	"clips; the plugin reads the effect's, and assumes 24 fps only where a host "
+	"reports none.\n\n"
 	"https://stoatworks-labs.com";
 
 constexpr const char* kParamSheetFile  = "sheetFile";
@@ -367,17 +369,17 @@ private:
 	}
 };
 
-/// The frame rate when the host reports none: 24, Resolve's default timeline
-/// rate. Resolve's Fusion page reports no frame rate anywhere.
+/// The frame rate when the host reports none anywhere: 24, Resolve's default
+/// timeline rate.
 constexpr double kFallbackFrameRate = 24.0;
 
 /// OFX time is in frames. This is the first positive, finite frame rate the
 /// host gives -- the output clip's, the source clip's, the effect's -- else
 /// kFallbackFrameRate. Each read is its own try: Resolve's Fusion page gives
-/// kOfxImageEffectPropFrameRate on neither the effect nor any clip, the
-/// Support library throws on a property the host lacks, and a throw out of
-/// render fails the render -- in Fusion, a composition that "could not be
-/// processed successfully".
+/// kOfxImageEffectPropFrameRate on the effect but on no clip, the Support
+/// library throws on a property the host lacks, and a throw out of render
+/// fails the render -- in Fusion, a composition that "could not be processed
+/// successfully". There the effect's rate, the timeline's, is the one used.
 double framesPerSecond( const OFX::ImageEffect& effect, const OFX::Clip* output, const OFX::Clip* source )
 {
 	const auto usable = []( double rate ) { return std::isfinite( rate ) && rate > 0.0; };
@@ -651,9 +653,8 @@ private:
 		const int runLength = RunLength( from, count, cells );
 
 		// OFX hands time in frames; FrameClock wants seconds. A host that
-		// reports no frame rate -- Resolve's Fusion page -- gets 24 (see
-		// framesPerSecond): wrong somewhere, but never zero, which would make
-		// every frame the first one.
+		// reports no frame rate anywhere gets 24 (see framesPerSecond): wrong
+		// somewhere, but never zero, which would make every frame the first one.
 		const double fps = framesPerSecond( *this, dstClip, srcClip );
 
 		int syncChoice = 0, modeChoice = 0;

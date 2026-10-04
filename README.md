@@ -173,12 +173,12 @@ OFX carries no tempo for Beat and Bar to lock to. And there is **no "Sheet From:
 Input Clip"** — an OFX host already has a file browser and a media pool, so the
 mode has nothing to offer there.
 
-**Fusion reports no frame rate; there, time-based controls assume 24 fps.**
-Resolve's Fusion page gives an OpenFX plugin no frame rate at all, and the first
-OpenFX builds failed every render there. Now Flipbook falls back to 24, Resolve's
-default timeline rate, so in Fusion Free playback runs as if the composition were 24
-fps whatever its real rate. A host that reports a rate, Resolve's Edit page
-included, gets its own.
+**Resolve's Fusion page reports the frame rate on the effect but not on its clips.**
+The first OpenFX builds read a clip's rate, which Fusion leaves out, and failed
+every render there. Now Flipbook asks the output clip, the source clip and then the
+effect, so in Fusion Free playback runs at the timeline's own rate (checked at 24
+and 25 fps). It assumes 24 fps, Resolve's default timeline rate, only where a host
+reports no rate at all.
 
 Copy `Flipbook.ofx.bundle` into the standard OpenFX folder and restart the host:
 
