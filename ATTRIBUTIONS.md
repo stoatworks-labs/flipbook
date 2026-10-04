@@ -50,15 +50,15 @@ Vendored at external/openfx — a git submodule in resolume-ofx-bridge, a copy o
 
 The plugin ABI for the DaVinci Resolve and Nuke side of the same effects, so one core renders through both hosts.
 
-### stb_truetype
+### stb_image
 
 <https://github.com/nothings/stb>  
-Licence: MIT or Public Domain (Unlicense), at your choice  
+Licence: MIT or Public Domain (dual, at your option)  
 Copyright: Sean Barrett
 
-Single header vendored at external/stb/stb_truetype.h.
+Single-header decoder vendored under external/stb/ and compiled into one translation unit.
 
-Rasterises glyphs into the atlas the plugin samples. A whole font stack would be a large dependency for one job this header already does.
+Decodes PNG, JPEG and GIF. A sprite-sheet player has to open whatever the operator exported.
 
 ## Getting this wrong
 
