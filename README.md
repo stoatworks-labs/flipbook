@@ -7,8 +7,10 @@
 > against an independent prediction across all three play modes, measures every
 > copy against where the solver said it would land, and asserts that no cell
 > bleeds into its neighbour under either filter (see [Status](#status)). It has
-> **never been loaded into Resolume or Resolve** — only compiled, rendered and
-> measured offline. Check it in your own rig before trusting it in a show.
+> **never been loaded into Resolume**. In DaVinci Resolve, v1.0.9's OpenFX build
+> renders as a Fusion tool on the Fusion page, and its generator plays there; no
+> other page of Resolve has been tried. Everything else is compiled, rendered
+> and measured offline. Check it in your own rig before trusting it in a show.
 
 A sprite sheet player for [Resolume](https://resolume.com) Arena and Avenue, as
 a pair of FFGL plugins — and the same thing again as an OpenFX plugin for
@@ -203,7 +205,10 @@ submodule; on Windows, GLEW comes from vcpkg. Image decoding is
 
 ## Status
 
-**Verified offline, never run in Resolume or Resolve.** `tools/verify.sh` builds
+**Verified offline, never run in Resolume.** In DaVinci Resolve Studio 21.1 on
+macOS, v1.0.9's OpenFX build renders as a Fusion tool and its generator plays
+there (v1.0.8's failed every frame on that page); no other page of Resolve has
+been tried. `tools/verify.sh` builds
 universal, checks each bundle with `lipo` and `nm`, then renders real frames and
 measures them:
 

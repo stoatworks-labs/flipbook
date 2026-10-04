@@ -16,9 +16,14 @@ as it goes.*
 > within 2% at four aspect ratios; and no pixel of an interior cell carries any of its neighbour's
 > colour under either filter. All 39 parameters change the picture.
 >
-> **It has never been loaded into Resolume or Resolve.** How the parameter groups land in the
+> **It has never been loaded into Resolume.** How the parameter groups land in the
 > inspector, whether Beat and Bar lock against a real transport, and how usable *Sheet From: Input
 > Clip* is once a real clip transform is in the way are all open. Try it on a spare layer first.
+>
+> Released at **v1.0.9**, whose OpenFX build renders on DaVinci Resolve's Fusion page, with Free
+> playback running at the composition's frame rate and the generator moving; v1.0.8's failed every
+> frame there. Only the Fusion page has been tried — not Resolve's Edit or Color page, Vegas, Nuke
+> or Natron.
 >
 > This codebase was created with AI assistance, directed and reviewed by a human author.
 

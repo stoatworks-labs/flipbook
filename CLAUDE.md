@@ -32,8 +32,9 @@ or the sampling.
   shader's inset, key or blend, change this too.
 - Sync offers Free and Manual only: OFX hosts carry no tempo. Manual is the mode
   for keyframing Phase against the edit.
-- OFX time arrives in *frames*; the plugin divides by the clip frame rate to get
-  the seconds `FrameClock` wants.
+- OFX time arrives in *frames*; the plugin divides by the host's frame rate to get
+  the seconds `FrameClock` wants: the clips' rate, else the effect's (all Resolve's
+  Fusion page reports), else 24 — `framesPerSecond()`, every read guarded.
 - Smoke test (ofxprobe drives the Filter context; the generator's render runs
   only in a real host). **`--set-string` is required** — without the sheet, every
   numeric setting measures an empty frame that renders perfectly and draws nothing:
