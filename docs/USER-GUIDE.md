@@ -20,7 +20,8 @@ as it goes.*
 > inspector, whether Beat and Bar lock against a real transport, and how usable *Sheet From: Input
 > Clip* is once a real clip transform is in the way are all open. Try it on a spare layer first.
 >
-> Released at **v1.0.9**, whose OpenFX build renders on DaVinci Resolve's Fusion page, with Free
+> Released at **v1.0.10**, which keeps a preset selected when the host restates its own values.
+> v1.0.9's OpenFX build was the first to render on DaVinci Resolve's Fusion page, with Free
 > playback running at the composition's frame rate and the generator moving; v1.0.8's failed every
 > frame there. Only the Fusion page has been tried — not Resolve's Edit or Color page, Vegas, Nuke
 > or Natron.
