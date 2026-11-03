@@ -1,0 +1,16 @@
+# Flipbook
+
+> Play a sprite sheet in Resolume
+
+A page of stills, cut into a grid and played as an animation, as an FFGL source and a
+matching effect for Resolume and an OpenFX plugin for Resolve. Up to sixty-four copies
+with a stagger, so one animation travels through the field instead of sixty-four of them
+doing the same thing at once.
+
+This page, https://flipbook.stoatworks-labs.com/: The Flipbook FFGL plugin's playback running live in WebGL2. Drop your own sprite sheet on it, set the grid, and watch it play — copies, stagger, keying and all.
+
+## Links
+
+- [Project page](https://stoatworks-labs.com/software/flipbook/): downloads and the video
+- [User guide](https://stoatworks-labs.com/software/flipbook/guide/)
+- [Source on GitHub](https://github.com/stoatworks-labs/flipbook)

@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://flipbook.stoatworks-labs.com/sitemap.xml

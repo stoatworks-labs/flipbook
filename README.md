@@ -17,6 +17,8 @@ a pair of FFGL plugins, and the same thing again as an OpenFX plugin for
 Resolve, Nuke, Natron and Vegas. Point it at a page of stills, tell it the grid,
 and it plays the cells as an animation.
 
+The [project page](https://stoatworks-labs.com/software/flipbook/) has the downloads, the [user guide](https://stoatworks-labs.com/software/flipbook/guide/) and the video.
+
 ![Nine copies of a burst on a ring, each one frame behind the last](docs/hero.png)
 
 <sub>Nine copies on a ring with a one-frame stagger, so the burst travels round
